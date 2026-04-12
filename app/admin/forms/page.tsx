@@ -2,6 +2,8 @@ import { listForms } from "@/lib/data";
 import Link from "next/link";
 import CopyClientLinkButton from "./CopyClientLinkButton";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminFormsPage() {
   const forms = await listForms();
 
