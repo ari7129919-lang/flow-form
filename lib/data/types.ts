@@ -4,6 +4,8 @@ export type Form = {
   name: string;
   welcomeTitle: string;
   welcomeSubtitle: string;
+  completionTitle: string;
+  completionSubtitle: string;
   nudgeQuestionOrder: number | null;
   nudgeText: string | null;
 };

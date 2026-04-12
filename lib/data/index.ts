@@ -11,6 +11,8 @@ export type AdminForm = {
   name: string;
   welcomeTitle: string;
   welcomeSubtitle: string;
+  completionTitle: string;
+  completionSubtitle: string;
   nudgeQuestionOrder: number | null;
   nudgeText: string | null;
 };
@@ -31,6 +33,8 @@ export type FormBootstrap = {
     name: string;
     welcomeTitle: string;
     welcomeSubtitle: string;
+    completionTitle: string;
+    completionSubtitle: string;
     nudgeQuestionOrder: number | null;
     nudgeText: string | null;
   };
@@ -70,7 +74,9 @@ export async function listForms(): Promise<AdminForm[]> {
   const supabase = getSupabaseServerClient();
   const { data, error } = await supabase
     .from("ff_forms")
-    .select("id, slug, name, welcome_title, welcome_subtitle, nudge_question_order, nudge_text")
+    .select(
+      "id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, nudge_question_order, nudge_text",
+    )
     .order("slug", { ascending: true });
   if (error) throw error;
   return (data ?? []).map((f) => ({
@@ -79,6 +85,8 @@ export async function listForms(): Promise<AdminForm[]> {
     name: f.name,
     welcomeTitle: f.welcome_title,
     welcomeSubtitle: f.welcome_subtitle,
+    completionTitle: f.completion_title,
+    completionSubtitle: f.completion_subtitle,
     nudgeQuestionOrder: f.nudge_question_order,
     nudgeText: f.nudge_text,
   }));
@@ -97,6 +105,8 @@ export async function getFormAdmin(formId: string): Promise<{ form: AdminForm; q
         name: f.name,
         welcomeTitle: f.welcomeTitle,
         welcomeSubtitle: f.welcomeSubtitle,
+        completionTitle: f.completionTitle,
+        completionSubtitle: f.completionSubtitle,
         nudgeQuestionOrder: f.nudgeQuestionOrder,
         nudgeText: f.nudgeText,
       },
@@ -114,7 +124,9 @@ export async function getFormAdmin(formId: string): Promise<{ form: AdminForm; q
   const supabase = getSupabaseServerClient();
   const { data: f, error: fErr } = await supabase
     .from("ff_forms")
-    .select("id, slug, name, welcome_title, welcome_subtitle, nudge_question_order, nudge_text")
+    .select(
+      "id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, nudge_question_order, nudge_text",
+    )
     .eq("id", formId)
     .maybeSingle();
   if (fErr) throw fErr;
@@ -134,6 +146,8 @@ export async function getFormAdmin(formId: string): Promise<{ form: AdminForm; q
       name: f.name,
       welcomeTitle: f.welcome_title,
       welcomeSubtitle: f.welcome_subtitle,
+      completionTitle: f.completion_title,
+      completionSubtitle: f.completion_subtitle,
       nudgeQuestionOrder: f.nudge_question_order,
       nudgeText: f.nudge_text,
     },
@@ -158,7 +172,9 @@ export async function createForm(args: { name: string; slug: string }): Promise<
   const { data, error } = await supabase
     .from("ff_forms")
     .insert({ slug: args.slug, name: args.name })
-    .select("id, slug, name, welcome_title, welcome_subtitle, nudge_question_order, nudge_text")
+    .select(
+      "id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, nudge_question_order, nudge_text",
+    )
     .single();
   if (error) throw error;
   return {
@@ -167,6 +183,8 @@ export async function createForm(args: { name: string; slug: string }): Promise<
     name: data.name,
     welcomeTitle: data.welcome_title,
     welcomeSubtitle: data.welcome_subtitle,
+    completionTitle: data.completion_title,
+    completionSubtitle: data.completion_subtitle,
     nudgeQuestionOrder: data.nudge_question_order,
     nudgeText: data.nudge_text,
   };
@@ -179,6 +197,8 @@ export async function updateForm(
     slug: string;
     welcomeTitle: string;
     welcomeSubtitle: string;
+    completionTitle: string;
+    completionSubtitle: string;
     nudgeQuestionOrder: number | null;
     nudgeText: string | null;
   }>,
@@ -194,6 +214,8 @@ export async function updateForm(
   if (patch.slug !== undefined) payload.slug = patch.slug;
   if (patch.welcomeTitle !== undefined) payload.welcome_title = patch.welcomeTitle;
   if (patch.welcomeSubtitle !== undefined) payload.welcome_subtitle = patch.welcomeSubtitle;
+  if (patch.completionTitle !== undefined) payload.completion_title = patch.completionTitle;
+  if (patch.completionSubtitle !== undefined) payload.completion_subtitle = patch.completionSubtitle;
   if (patch.nudgeQuestionOrder !== undefined) payload.nudge_question_order = patch.nudgeQuestionOrder;
   if (patch.nudgeText !== undefined) payload.nudge_text = patch.nudgeText;
 
@@ -201,7 +223,9 @@ export async function updateForm(
     .from("ff_forms")
     .update(payload)
     .eq("id", formId)
-    .select("id, slug, name, welcome_title, welcome_subtitle, nudge_question_order, nudge_text")
+    .select(
+      "id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, nudge_question_order, nudge_text",
+    )
     .single();
   if (error) throw error;
   return {
@@ -210,6 +234,8 @@ export async function updateForm(
     name: data.name,
     welcomeTitle: data.welcome_title,
     welcomeSubtitle: data.welcome_subtitle,
+    completionTitle: data.completion_title,
+    completionSubtitle: data.completion_subtitle,
     nudgeQuestionOrder: data.nudge_question_order,
     nudgeText: data.nudge_text,
   };
@@ -388,6 +414,8 @@ export async function getFormBootstrap(slug: string): Promise<FormBootstrap | nu
         name: f.name,
         welcomeTitle: f.welcomeTitle,
         welcomeSubtitle: f.welcomeSubtitle,
+        completionTitle: f.completionTitle,
+        completionSubtitle: f.completionSubtitle,
         nudgeQuestionOrder: f.nudgeQuestionOrder,
         nudgeText: f.nudgeText,
       },
@@ -405,7 +433,7 @@ export async function getFormBootstrap(slug: string): Promise<FormBootstrap | nu
   const { data: form, error: formErr } = await supabase
     .from("ff_forms")
     .select(
-      "id, slug, name, welcome_title, welcome_subtitle, nudge_question_order, nudge_text",
+      "id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, nudge_question_order, nudge_text",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -426,6 +454,8 @@ export async function getFormBootstrap(slug: string): Promise<FormBootstrap | nu
       name: form.name,
       welcomeTitle: form.welcome_title,
       welcomeSubtitle: form.welcome_subtitle,
+      completionTitle: form.completion_title,
+      completionSubtitle: form.completion_subtitle,
       nudgeQuestionOrder: form.nudge_question_order,
       nudgeText: form.nudge_text,
     },

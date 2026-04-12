@@ -15,6 +15,8 @@ const forms: Form[] = [
     name: "טופס דמו",
     welcomeTitle: "שלום! 👋",
     welcomeSubtitle: "בוא נתחיל בכמה שאלות קצרות.",
+    completionTitle: "תודה! הטופס התקבל",
+    completionSubtitle: "אפשר לסגור את החלון.",
     nudgeQuestionOrder: 25,
     nudgeText: "יפה מאוד! עוד מעט וסיימת 🙌",
   },
@@ -68,6 +70,8 @@ export const mockStore = {
       name: args.name,
       welcomeTitle: "שלום! 👋",
       welcomeSubtitle: "בוא נתחיל בכמה שאלות קצרות.",
+      completionTitle: "תודה! הטופס התקבל",
+      completionSubtitle: "אפשר לסגור את החלון.",
       nudgeQuestionOrder: null,
       nudgeText: null,
     };

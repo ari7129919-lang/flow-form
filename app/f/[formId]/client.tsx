@@ -26,6 +26,8 @@ type Bootstrap = {
     name: string;
     welcomeTitle: string;
     welcomeSubtitle: string;
+    completionTitle: string;
+    completionSubtitle: string;
     nudgeQuestionOrder: number | null;
     nudgeText: string | null;
   };
@@ -135,6 +137,10 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
   const messages: Msg[] = useMemo(() => {
     const base: Msg[] = [];
 
+    if (stage === "done") {
+      return base;
+    }
+
     if (!bootstrap) {
       base.push({ id: "w1", from: "bot", text: "שלום! ", atIso: new Date().toISOString() });
       base.push({
@@ -180,7 +186,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
       });
     }
 
-    if (verifiedOkAtIso && (stage === "loading_form" || stage === "question" || stage === "done")) {
+    if (verifiedOkAtIso && (stage === "loading_form" || stage === "question")) {
       base.push({
         id: "otp_verified_ok",
         from: "bot",
@@ -221,17 +227,6 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
         from: "bot",
         text: currentQuestion.text,
         atIso: questionShownAtIso ?? new Date().toISOString(),
-      });
-    }
-
-    if (stage === "done") {
-      base.push({ id: "d1", from: "bot", text: "סיימת! תודה רבה 🙏", atIso: new Date().toISOString() });
-      base.push({
-        id: "d2",
-        from: "bot",
-        text: "הטופס נקלט. (בקרוב: שליחה למייל + דוחות)",
-        subtle: true,
-        atIso: new Date().toISOString(),
       });
     }
 
@@ -338,6 +333,23 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
       setError("לא הצלחתי לטעון שאלות");
       setStage("await_code");
     }
+  }
+
+  function editDetails() {
+    setError(null);
+    setCode("");
+    setSessionId(null);
+    setDebugCode(null);
+    setBootstrap(null);
+    setQIndex(0);
+    setHistory([]);
+    setPendingValue(null);
+    setPendingOtherText("");
+    setVerifiedOkAtIso(null);
+    setQuestionShownAtIso(null);
+    setTyping(false);
+    setBotStatus("מאובטח");
+    setStage("collect");
   }
 
   async function submitAnswer(value: AnswerValue) {
@@ -447,6 +459,26 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
     } finally {
       setSaving(false);
     }
+  }
+
+  if (stage === "done") {
+    const title = bootstrap?.form.completionTitle || "תודה! הטופס התקבל";
+    const subtitle = bootstrap?.form.completionSubtitle || "אפשר לסגור את החלון.";
+    return (
+      <div className="fixed inset-0 overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50 via-zinc-50 to-zinc-100">
+        <div className="mx-auto flex h-full w-full max-w-md flex-col p-3 sm:max-w-lg md:max-w-xl">
+          <div className="flex min-h-0 flex-1 items-center justify-center">
+            <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 text-center shadow-sm">
+              <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
+                <Check className="size-6" />
+              </div>
+              <div className="mt-4 text-lg font-semibold text-zinc-900">{title}</div>
+              <div className="mt-2 text-sm leading-6 text-zinc-600">{subtitle}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -617,21 +649,15 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
                 </button>
 
                 <button
-                  onClick={() => {
-                    setStage("collect");
-                    setCode("");
-                    setSessionId(null);
-                    setDebugCode(null);
-                    setBootstrap(null);
-                    setQIndex(0);
-                    setPendingValue(null);
-                    setPendingOtherText("");
-                    setError(null);
-                  }}
+                  onClick={editDetails}
                   className="h-11 rounded-xl border border-zinc-300 bg-white"
                 >
-                  שלח קוד מחדש
+                  עריכת פרטים
                 </button>
+
+                <div className="text-center text-xs text-zinc-500">
+                  טעית במייל/טלפון? לחץ על "עריכת פרטים" כדי לחזור ולתקן.
+                </div>
               </div>
             ) : null}
 
@@ -692,12 +718,6 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
                 <div className="text-center text-xs text-zinc-500">
                   שאלה {qIndex + 1} מתוך {totalQuestions}
                 </div>
-              </div>
-            ) : null}
-
-            {stage === "done" ? (
-              <div className="text-center text-sm text-zinc-700">
-                אפשר לסגור את החלון.
               </div>
             ) : null}
           </div>

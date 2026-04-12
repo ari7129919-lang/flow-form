@@ -11,6 +11,8 @@ type FormPayload = {
     name: string;
     welcomeTitle: string;
     welcomeSubtitle: string;
+    completionTitle: string;
+    completionSubtitle: string;
     nudgeQuestionOrder: number | null;
     nudgeText: string | null;
   };
@@ -216,6 +218,24 @@ export default function AdminFormEditPage() {
               value={data.form.welcomeSubtitle}
               onChange={(e) => setData({ ...data, form: { ...data.form, welcomeSubtitle: e.target.value } })}
               onBlur={() => saveFormPatch({ welcomeSubtitle: data.form.welcomeSubtitle })}
+              disabled={saving}
+              className="h-11 rounded-xl border border-zinc-300 px-3 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
+            />
+
+            <label className="text-xs text-zinc-500">Completion title</label>
+            <input
+              value={data.form.completionTitle}
+              onChange={(e) => setData({ ...data, form: { ...data.form, completionTitle: e.target.value } })}
+              onBlur={() => saveFormPatch({ completionTitle: data.form.completionTitle })}
+              disabled={saving}
+              className="h-11 rounded-xl border border-zinc-300 px-3 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
+            />
+
+            <label className="text-xs text-zinc-500">Completion subtitle</label>
+            <input
+              value={data.form.completionSubtitle}
+              onChange={(e) => setData({ ...data, form: { ...data.form, completionSubtitle: e.target.value } })}
+              onBlur={() => saveFormPatch({ completionSubtitle: data.form.completionSubtitle })}
               disabled={saving}
               className="h-11 rounded-xl border border-zinc-300 px-3 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
             />

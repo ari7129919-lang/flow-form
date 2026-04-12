@@ -24,6 +24,8 @@ const updateSchema = z.object({
   slug: z.string().trim().min(1).optional(),
   welcomeTitle: z.string().trim().min(1).optional(),
   welcomeSubtitle: z.string().trim().min(1).optional(),
+  completionTitle: z.string().trim().min(1).optional(),
+  completionSubtitle: z.string().trim().min(1).optional(),
   nudgeQuestionOrder: z.number().int().positive().nullable().optional(),
   nudgeText: z.string().trim().min(1).nullable().optional(),
 });

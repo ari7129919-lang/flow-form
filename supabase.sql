@@ -9,10 +9,18 @@ create table if not exists public.ff_forms (
   name text not null,
   welcome_title text not null default 'שלום! 👋',
   welcome_subtitle text not null default 'בוא נתחיל בכמה שאלות קצרות.',
+  completion_title text not null default 'תודה! הטופס התקבל',
+  completion_subtitle text not null default 'אפשר לסגור את החלון.',
   nudge_question_order int null,
   nudge_text text null,
   created_at timestamptz not null default now()
 );
+
+alter table public.ff_forms
+  add column if not exists completion_title text not null default 'תודה! הטופס התקבל';
+
+alter table public.ff_forms
+  add column if not exists completion_subtitle text not null default 'אפשר לסגור את החלון.';
 
 create table if not exists public.ff_questions (
   id uuid primary key default gen_random_uuid(),
