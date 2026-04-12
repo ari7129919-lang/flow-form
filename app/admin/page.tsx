@@ -1,6 +1,12 @@
 import Link from "next/link";
+import { listForms } from "@/lib/data";
+import CopyClientLinkButton from "./forms/CopyClientLinkButton";
 
-export default function AdminHomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function AdminHomePage() {
+  const forms = (await listForms()) as any[];
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -48,9 +54,26 @@ export default function AdminHomePage() {
 
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <div className="text-sm text-zinc-500">קישור ללקוח</div>
-        <div className="mt-2 text-sm">
-          לדוגמה: <Link className="underline" href="/f/demo">/f/demo</Link>
-        </div>
+        {(forms ?? []).length === 0 ? (
+          <div className="mt-2 text-sm text-zinc-600">אין טפסים. צור טופס חדש בעמוד הטפסים.</div>
+        ) : (
+          <div className="mt-3 flex flex-col gap-2">
+            {(forms ?? []).slice(0, 5).map((f) => (
+              <div key={f.id} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-2">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium text-zinc-900">{f.name}</div>
+                  <div className="truncate text-xs text-zinc-600">/f/{f.slug}</div>
+                </div>
+                <div className="shrink-0">
+                  <CopyClientLinkButton slug={f.slug} />
+                </div>
+              </div>
+            ))}
+            {(forms ?? []).length > 5 ? (
+              <div className="text-xs text-zinc-500">יש עוד טפסים — ראה בעמוד טפסים.</div>
+            ) : null}
+          </div>
+        )}
       </div>
     </div>
   );
