@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import CopyClientLinkButton from "../CopyClientLinkButton";
 
 type FormPayload = {
   form: {
@@ -173,12 +174,15 @@ export default function AdminFormEditPage() {
           <h1 className="text-2xl font-semibold">עריכת טופס</h1>
           <div className="mt-1 text-sm text-zinc-600">{data.form.slug}</div>
         </div>
-        <button
-          className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 transition-all hover:bg-zinc-100"
-          onClick={() => router.push("/admin/forms")}
-        >
-          חזרה
-        </button>
+        <div className="flex items-center gap-2">
+          <CopyClientLinkButton slug={data.form.slug} />
+          <button
+            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 transition-all hover:bg-zinc-100"
+            onClick={() => router.push("/admin/forms")}
+          >
+            חזרה
+          </button>
+        </div>
       </div>
 
       {error ? (

@@ -1,5 +1,6 @@
 import { listForms } from "@/lib/data";
 import Link from "next/link";
+import CopyClientLinkButton from "./CopyClientLinkButton";
 
 export default async function AdminFormsPage() {
   const forms = await listForms();
@@ -37,12 +38,15 @@ export default async function AdminFormsPage() {
                 <div className="col-span-4 text-zinc-600">{f.slug}</div>
                 <div className="col-span-2 text-zinc-600">{f.nudge_question_order ?? f.nudgeQuestionOrder ?? "-"}</div>
                 <div className="col-span-2 text-left">
-                  <Link
-                    className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-700 transition-all hover:bg-zinc-100"
-                    href={`/admin/forms/${f.id}`}
-                  >
-                    עריכה
-                  </Link>
+                  <div className="flex items-center justify-end gap-2">
+                    <CopyClientLinkButton slug={f.slug} />
+                    <Link
+                      className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-700 transition-all hover:bg-zinc-100"
+                      href={`/admin/forms/${f.id}`}
+                    >
+                      עריכה
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}
