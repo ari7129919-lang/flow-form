@@ -367,11 +367,13 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
 
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as
-        | { error?: string; details?: { fieldErrors?: Record<string, string[]> } }
+        | { error?: unknown; details?: { fieldErrors?: Record<string, string[]> } }
         | null;
       const phoneMsg = data?.details?.fieldErrors?.phone?.[0];
       if (phoneMsg) setPhoneError(phoneMsg);
-      setError(data?.error ?? "שגיאה בשליחת קוד");
+
+      const errMsg = typeof data?.error === "string" && data.error.trim().length > 0 ? data.error : null;
+      setError(errMsg ?? `שגיאה בשליחת קוד (${res.status})`);
       setStage("collect_phone");
       return;
     }

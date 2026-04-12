@@ -90,21 +90,31 @@ export async function POST(req: Request) {
   }
 
   if (!env.USE_MOCK_DATA) {
-    await sendMail({
-      to: parsed.data.email,
-      subject: "קוד אימות חד-פעמי",
-      text: `קוד האימות שלך הוא: ${code}\n\nהקוד בתוקף ל-10 דקות. אם לא ביקשת קוד, אפשר להתעלם מהודעה זו.`,
-      html: `
-        <div dir="rtl" style="font-family:Arial,Helvetica,sans-serif;line-height:1.6">
-          <h2 style="margin:0 0 12px">קוד אימות חד-פעמי</h2>
-          <p style="margin:0 0 8px">להמשך מילוי הטופס <b>${escapeHtml(form.name)}</b>, הזן את הקוד הבא:</p>
-          <div style="display:inline-block;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:14px 18px;font-size:22px;letter-spacing:4px;font-weight:700;color:#065f46">
-            ${code}
+    try {
+      await sendMail({
+        to: parsed.data.email,
+        subject: "קוד אימות חד-פעמי",
+        text: `קוד האימות שלך הוא: ${code}\n\nהקוד בתוקף ל-10 דקות. אם לא ביקשת קוד, אפשר להתעלם מהודעה זו.`,
+        html: `
+          <div dir="rtl" style="font-family:Arial,Helvetica,sans-serif;line-height:1.6">
+            <h2 style="margin:0 0 12px">קוד אימות חד-פעמי</h2>
+            <p style="margin:0 0 8px">להמשך מילוי הטופס <b>${escapeHtml(form.name)}</b>, הזן את הקוד הבא:</p>
+            <div style="display:inline-block;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:14px 18px;font-size:22px;letter-spacing:4px;font-weight:700;color:#065f46">
+              ${code}
+            </div>
+            <p style="margin:12px 0 0;color:#52525b;font-size:13px">הקוד בתוקף ל-10 דקות. אם לא ביקשת קוד, אפשר להתעלם מהודעה זו.</p>
           </div>
-          <p style="margin:12px 0 0;color:#52525b;font-size:13px">הקוד בתוקף ל-10 דקות. אם לא ביקשת קוד, אפשר להתעלם מהודעה זו.</p>
-        </div>
-      `,
-    });
+        `,
+      });
+    } catch (e) {
+      console.error("[otp:start] sendMail failed", {
+        formId: form.id,
+        formSlug: parsed.data.formSlug,
+        to: parsed.data.email,
+        error: e,
+      });
+      return NextResponse.json({ error: "שגיאה בשליחת קוד למייל" }, { status: 500 });
+    }
   }
 
   return NextResponse.json({
