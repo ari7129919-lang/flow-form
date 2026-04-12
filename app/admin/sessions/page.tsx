@@ -1,6 +1,19 @@
 import Link from "next/link";
 import { listCompletedSessions } from "@/lib/data";
 
+function fmtDateTime(iso?: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleString("he-IL", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default async function AdminSessionsPage() {
   const sessions = await listCompletedSessions();
 
@@ -41,7 +54,7 @@ export default async function AdminSessionsPage() {
                 <div className="col-span-2 truncate text-zinc-700">{s.phone ?? ""}</div>
                 <div className="col-span-2 truncate text-zinc-700">{s.name ?? ""}</div>
                 <div className="col-span-2 truncate text-zinc-600">
-                  {s.completedAt ?? s.completed_at ?? s.createdAt ?? s.created_at}
+                  {fmtDateTime(s.completedAt ?? s.completed_at ?? s.createdAt ?? s.created_at)}
                 </div>
                 <div className="col-span-2 text-left">
                   <Link

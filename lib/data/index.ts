@@ -3,6 +3,12 @@ import { getSupabaseServerClient } from "@/lib/supabaseServer";
 import { mockStore } from "@/lib/data/mockStore";
 import type { AnswerValue } from "@/lib/data/answers";
 
+function isMissingColumnError(err: unknown) {
+  const e = err as any;
+  const msg = String(e?.message ?? "");
+  return e?.code === "42703" || msg.includes("does not exist") || msg.includes("column");
+}
+
 export type FormRow = { id: string; slug: string; name: string };
 
 export type AdminForm = {
@@ -13,6 +19,15 @@ export type AdminForm = {
   welcomeSubtitle: string;
   completionTitle: string;
   completionSubtitle: string;
+  chatCopy: {
+    introTitle: string;
+    introSubtitle: string;
+    askName: string;
+    askEmail: string;
+    askPhone: string;
+    otpPrompt: string;
+  };
+  nudges: Array<{ atQuestionOrder: number; text: string }>;
   nudgeQuestionOrder: number | null;
   nudgeText: string | null;
 };
@@ -35,6 +50,15 @@ export type FormBootstrap = {
     welcomeSubtitle: string;
     completionTitle: string;
     completionSubtitle: string;
+    chatCopy: {
+      introTitle: string;
+      introSubtitle: string;
+      askName: string;
+      askEmail: string;
+      askPhone: string;
+      otpPrompt: string;
+    };
+    nudges: Array<{ atQuestionOrder: number; text: string }>;
     nudgeQuestionOrder: number | null;
     nudgeText: string | null;
   };
@@ -72,13 +96,26 @@ export async function listForms(): Promise<AdminForm[]> {
   }
 
   const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase
+
+  let data: any[] | null = null;
+  const primary = await supabase
     .from("ff_forms")
     .select(
-      "id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, nudge_question_order, nudge_text",
+      "id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, chat_copy, nudges, nudge_question_order, nudge_text",
     )
     .order("slug", { ascending: true });
-  if (error) throw error;
+  if (primary.error) {
+    if (!isMissingColumnError(primary.error)) throw primary.error;
+    const fallback = await supabase
+      .from("ff_forms")
+      .select("id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, nudge_question_order, nudge_text")
+      .order("slug", { ascending: true });
+    if (fallback.error) throw fallback.error;
+    data = fallback.data as any;
+  } else {
+    data = primary.data as any;
+  }
+
   return (data ?? []).map((f) => ({
     id: f.id,
     slug: f.slug,
@@ -87,6 +124,15 @@ export async function listForms(): Promise<AdminForm[]> {
     welcomeSubtitle: f.welcome_subtitle,
     completionTitle: f.completion_title,
     completionSubtitle: f.completion_subtitle,
+    chatCopy: (f.chat_copy ?? {
+      introTitle: "שלום! 👋",
+      introSubtitle: "כדי להתחיל נבקש כמה פרטים ואז נשלח קוד אימות למייל.",
+      askName: "מה שמך? (לא חובה)",
+      askEmail: "מה המייל שנשלח אליו קוד אימות?",
+      askPhone: "מה מספר הטלפון שלך?",
+      otpPrompt: "שלחתי קוד אימות למייל — הזן אותו כאן:",
+    }) as any,
+    nudges: Array.isArray(f.nudges) ? f.nudges : [],
     nudgeQuestionOrder: f.nudge_question_order,
     nudgeText: f.nudge_text,
   }));
@@ -107,6 +153,20 @@ export async function getFormAdmin(formId: string): Promise<{ form: AdminForm; q
         welcomeSubtitle: f.welcomeSubtitle,
         completionTitle: f.completionTitle,
         completionSubtitle: f.completionSubtitle,
+        chatCopy: (f as any).chatCopy ?? {
+          introTitle: "שלום! 👋",
+          introSubtitle: "כדי להתחיל נבקש כמה פרטים ואז נשלח קוד אימות למייל.",
+          askName: "מה שמך? (לא חובה)",
+          askEmail: "מה המייל שנשלח אליו קוד אימות?",
+          askPhone: "מה מספר הטלפון שלך?",
+          otpPrompt: "שלחתי קוד אימות למייל — הזן אותו כאן:",
+        },
+        nudges:
+          Array.isArray((f as any).nudges) && (f as any).nudges.length > 0
+            ? (f as any).nudges
+            : f.nudgeQuestionOrder && f.nudgeText
+              ? [{ atQuestionOrder: f.nudgeQuestionOrder, text: f.nudgeText }]
+              : [],
         nudgeQuestionOrder: f.nudgeQuestionOrder,
         nudgeText: f.nudgeText,
       },
@@ -122,14 +182,28 @@ export async function getFormAdmin(formId: string): Promise<{ form: AdminForm; q
   }
 
   const supabase = getSupabaseServerClient();
-  const { data: f, error: fErr } = await supabase
+  let f: any = null;
+
+  const primary = await supabase
     .from("ff_forms")
     .select(
-      "id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, nudge_question_order, nudge_text",
+      "id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, chat_copy, nudges, nudge_question_order, nudge_text",
     )
     .eq("id", formId)
     .maybeSingle();
-  if (fErr) throw fErr;
+  if (primary.error) {
+    if (!isMissingColumnError(primary.error)) throw primary.error;
+    const fallback = await supabase
+      .from("ff_forms")
+      .select("id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, nudge_question_order, nudge_text")
+      .eq("id", formId)
+      .maybeSingle();
+    if (fallback.error) throw fallback.error;
+    f = fallback.data as any;
+  } else {
+    f = primary.data as any;
+  }
+
   if (!f) return null;
 
   const { data: qs, error: qErr } = await supabase
@@ -148,6 +222,20 @@ export async function getFormAdmin(formId: string): Promise<{ form: AdminForm; q
       welcomeSubtitle: f.welcome_subtitle,
       completionTitle: f.completion_title,
       completionSubtitle: f.completion_subtitle,
+      chatCopy: (f.chat_copy ?? {
+        introTitle: "שלום! 👋",
+        introSubtitle: "כדי להתחיל נבקש כמה פרטים ואז נשלח קוד אימות למייל.",
+        askName: "מה שמך? (לא חובה)",
+        askEmail: "מה המייל שנשלח אליו קוד אימות?",
+        askPhone: "מה מספר הטלפון שלך?",
+        otpPrompt: "שלחתי קוד אימות למייל — הזן אותו כאן:",
+      }) as any,
+      nudges:
+        Array.isArray(f.nudges) && f.nudges.length > 0
+          ? f.nudges
+          : f.nudge_question_order && f.nudge_text
+            ? [{ atQuestionOrder: f.nudge_question_order, text: f.nudge_text }]
+            : [],
       nudgeQuestionOrder: f.nudge_question_order,
       nudgeText: f.nudge_text,
     },
@@ -169,14 +257,26 @@ export async function createForm(args: { name: string; slug: string }): Promise<
   }
 
   const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase
+  let data: any;
+  const primary = await supabase
     .from("ff_forms")
     .insert({ slug: args.slug, name: args.name })
     .select(
-      "id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, nudge_question_order, nudge_text",
+      "id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, chat_copy, nudges, nudge_question_order, nudge_text",
     )
     .single();
-  if (error) throw error;
+  if (primary.error) {
+    if (!isMissingColumnError(primary.error)) throw primary.error;
+    const fallback = await supabase
+      .from("ff_forms")
+      .insert({ slug: args.slug, name: args.name })
+      .select("id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, nudge_question_order, nudge_text")
+      .single();
+    if (fallback.error) throw fallback.error;
+    data = fallback.data as any;
+  } else {
+    data = primary.data as any;
+  }
   return {
     id: data.id,
     slug: data.slug,
@@ -185,6 +285,15 @@ export async function createForm(args: { name: string; slug: string }): Promise<
     welcomeSubtitle: data.welcome_subtitle,
     completionTitle: data.completion_title,
     completionSubtitle: data.completion_subtitle,
+    chatCopy: (data.chat_copy ?? {
+      introTitle: "שלום! 👋",
+      introSubtitle: "כדי להתחיל נבקש כמה פרטים ואז נשלח קוד אימות למייל.",
+      askName: "מה שמך? (לא חובה)",
+      askEmail: "מה המייל שנשלח אליו קוד אימות?",
+      askPhone: "מה מספר הטלפון שלך?",
+      otpPrompt: "שלחתי קוד אימות למייל — הזן אותו כאן:",
+    }) as any,
+    nudges: Array.isArray(data.nudges) ? data.nudges : [],
     nudgeQuestionOrder: data.nudge_question_order,
     nudgeText: data.nudge_text,
   };
@@ -199,6 +308,15 @@ export async function updateForm(
     welcomeSubtitle: string;
     completionTitle: string;
     completionSubtitle: string;
+    chatCopy: {
+      introTitle: string;
+      introSubtitle: string;
+      askName: string;
+      askEmail: string;
+      askPhone: string;
+      otpPrompt: string;
+    };
+    nudges: Array<{ atQuestionOrder: number; text: string }>;
     nudgeQuestionOrder: number | null;
     nudgeText: string | null;
   }>,
@@ -216,18 +334,33 @@ export async function updateForm(
   if (patch.welcomeSubtitle !== undefined) payload.welcome_subtitle = patch.welcomeSubtitle;
   if (patch.completionTitle !== undefined) payload.completion_title = patch.completionTitle;
   if (patch.completionSubtitle !== undefined) payload.completion_subtitle = patch.completionSubtitle;
+  if (patch.chatCopy !== undefined) payload.chat_copy = patch.chatCopy;
+  if (patch.nudges !== undefined) payload.nudges = patch.nudges;
   if (patch.nudgeQuestionOrder !== undefined) payload.nudge_question_order = patch.nudgeQuestionOrder;
   if (patch.nudgeText !== undefined) payload.nudge_text = patch.nudgeText;
 
-  const { data, error } = await supabase
+  let data: any;
+  const primary = await supabase
     .from("ff_forms")
     .update(payload)
     .eq("id", formId)
     .select(
-      "id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, nudge_question_order, nudge_text",
+      "id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, chat_copy, nudges, nudge_question_order, nudge_text",
     )
     .single();
-  if (error) throw error;
+  if (primary.error) {
+    if (!isMissingColumnError(primary.error)) throw primary.error;
+    const fallback = await supabase
+      .from("ff_forms")
+      .update(payload)
+      .eq("id", formId)
+      .select("id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, nudge_question_order, nudge_text")
+      .single();
+    if (fallback.error) throw fallback.error;
+    data = fallback.data as any;
+  } else {
+    data = primary.data as any;
+  }
   return {
     id: data.id,
     slug: data.slug,
@@ -236,6 +369,15 @@ export async function updateForm(
     welcomeSubtitle: data.welcome_subtitle,
     completionTitle: data.completion_title,
     completionSubtitle: data.completion_subtitle,
+    chatCopy: (data.chat_copy ?? {
+      introTitle: "שלום! 👋",
+      introSubtitle: "כדי להתחיל נבקש כמה פרטים ואז נשלח קוד אימות למייל.",
+      askName: "מה שמך? (לא חובה)",
+      askEmail: "מה המייל שנשלח אליו קוד אימות?",
+      askPhone: "מה מספר הטלפון שלך?",
+      otpPrompt: "שלחתי קוד אימות למייל — הזן אותו כאן:",
+    }) as any,
+    nudges: Array.isArray(data.nudges) ? data.nudges : [],
     nudgeQuestionOrder: data.nudge_question_order,
     nudgeText: data.nudge_text,
   };
@@ -416,6 +558,20 @@ export async function getFormBootstrap(slug: string): Promise<FormBootstrap | nu
         welcomeSubtitle: f.welcomeSubtitle,
         completionTitle: f.completionTitle,
         completionSubtitle: f.completionSubtitle,
+        chatCopy: (f as any).chatCopy ?? {
+          introTitle: "שלום! 👋",
+          introSubtitle: "כדי להתחיל נבקש כמה פרטים ואז נשלח קוד אימות למייל.",
+          askName: "מה שמך? (לא חובה)",
+          askEmail: "מה המייל שנשלח אליו קוד אימות?",
+          askPhone: "מה מספר הטלפון שלך?",
+          otpPrompt: "שלחתי קוד אימות למייל — הזן אותו כאן:",
+        },
+        nudges:
+          Array.isArray((f as any).nudges) && (f as any).nudges.length > 0
+            ? (f as any).nudges
+            : f.nudgeQuestionOrder && f.nudgeText
+              ? [{ atQuestionOrder: f.nudgeQuestionOrder, text: f.nudgeText }]
+              : [],
         nudgeQuestionOrder: f.nudgeQuestionOrder,
         nudgeText: f.nudgeText,
       },
@@ -430,14 +586,27 @@ export async function getFormBootstrap(slug: string): Promise<FormBootstrap | nu
   }
 
   const supabase = getSupabaseServerClient();
-  const { data: form, error: formErr } = await supabase
+  let form: any = null;
+  const primary = await supabase
     .from("ff_forms")
     .select(
-      "id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, nudge_question_order, nudge_text",
+      "id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, chat_copy, nudges, nudge_question_order, nudge_text",
     )
     .eq("slug", slug)
     .maybeSingle();
-  if (formErr) throw formErr;
+  if (primary.error) {
+    if (!isMissingColumnError(primary.error)) throw primary.error;
+    const fallback = await supabase
+      .from("ff_forms")
+      .select("id, slug, name, welcome_title, welcome_subtitle, completion_title, completion_subtitle, nudge_question_order, nudge_text")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (fallback.error) throw fallback.error;
+    form = fallback.data as any;
+  } else {
+    form = primary.data as any;
+  }
+
   if (!form) return null;
 
   const { data: qs, error: qsErr } = await supabase
@@ -456,6 +625,20 @@ export async function getFormBootstrap(slug: string): Promise<FormBootstrap | nu
       welcomeSubtitle: form.welcome_subtitle,
       completionTitle: form.completion_title,
       completionSubtitle: form.completion_subtitle,
+      chatCopy: (form.chat_copy ?? {
+        introTitle: "שלום! 👋",
+        introSubtitle: "כדי להתחיל נבקש כמה פרטים ואז נשלח קוד אימות למייל.",
+        askName: "מה שמך? (לא חובה)",
+        askEmail: "מה המייל שנשלח אליו קוד אימות?",
+        askPhone: "מה מספר הטלפון שלך?",
+        otpPrompt: "שלחתי קוד אימות למייל — הזן אותו כאן:",
+      }) as any,
+      nudges:
+        Array.isArray(form.nudges) && form.nudges.length > 0
+          ? form.nudges
+          : form.nudge_question_order && form.nudge_text
+            ? [{ atQuestionOrder: form.nudge_question_order, text: form.nudge_text }]
+            : [],
       nudgeQuestionOrder: form.nudge_question_order,
       nudgeText: form.nudge_text,
     },
@@ -467,6 +650,123 @@ export async function getFormBootstrap(slug: string): Promise<FormBootstrap | nu
       allowOther: q.allow_other,
     })),
   };
+}
+
+export type FunnelStep = {
+  key: string;
+  label: string;
+  count: number;
+};
+
+export type FunnelReport = {
+  totalSessions: number;
+  steps: FunnelStep[];
+};
+
+export async function getFunnelReport(args: { formId?: string | null }): Promise<FunnelReport> {
+  const env = getServerEnv();
+  const formId = args.formId ?? null;
+
+  if (env.USE_MOCK_DATA) {
+    const sessions = mockStore
+      .listSessions()
+      .filter((s: any) => (formId ? s.formId === formId : true));
+    const sessionIds = new Set(sessions.map((s: any) => s.id));
+    const allEvents: any[] = (globalThis as any).__ffMockState?.events ?? [];
+
+    const hasOtpSent = new Set<string>();
+    const hasOtpVerified = new Set<string>();
+    const maxAnswered = new Map<string, number>();
+    for (const e of allEvents) {
+      if (!sessionIds.has(e.sessionId)) continue;
+      if (e.type === "otp_sent") hasOtpSent.add(String(e.sessionId));
+      if (e.type === "otp_verified") hasOtpVerified.add(String(e.sessionId));
+      if (e.type === "answer") {
+        const qo = Number(e.questionOrder);
+        if (!Number.isFinite(qo)) continue;
+        const prev = maxAnswered.get(String(e.sessionId)) ?? 0;
+        maxAnswered.set(String(e.sessionId), Math.max(prev, qo));
+      }
+    }
+
+    const maxQ = Math.max(
+      0,
+      ...sessions.map((s: any) => Number(s.currentQuestionOrder ?? 0)).filter((n) => Number.isFinite(n)),
+    );
+    const maxQuestions = Math.max(maxQ, ...[...maxAnswered.values()]);
+
+    const steps: FunnelStep[] = [];
+    steps.push({ key: "otp_sent", label: "נשלח קוד", count: hasOtpSent.size });
+    steps.push({ key: "otp_verified", label: "אומת קוד", count: hasOtpVerified.size });
+    for (let i = 1; i <= maxQuestions; i++) {
+      const c = sessions.filter((s: any) => (maxAnswered.get(String(s.id)) ?? 0) >= i).length;
+      steps.push({ key: `answered_${i}`, label: `ענו על שאלה ${i}`, count: c });
+    }
+    const completed = sessions.filter((s: any) => s.status === "completed").length;
+    steps.push({ key: "completed", label: "הושלם", count: completed });
+
+    return { totalSessions: sessions.length, steps };
+  }
+
+  const supabase = getSupabaseServerClient();
+  const sessionsQ = supabase.from("ff_sessions").select("id, status, form_id");
+  if (formId) sessionsQ.eq("form_id", formId);
+  const { data: sessions, error: sErr } = await sessionsQ;
+  if (sErr) throw sErr;
+  const ids = (sessions ?? []).map((s) => s.id);
+  if (ids.length === 0) return { totalSessions: 0, steps: [] };
+
+  const { data: evs, error: eErr } = await supabase
+    .from("ff_events")
+    .select("session_id, type, question_order")
+    .in("session_id", ids);
+  if (eErr) throw eErr;
+
+  const hasOtpSent = new Set<string>();
+  const hasOtpVerified = new Set<string>();
+  const maxAnswered = new Map<string, number>();
+  for (const e of evs ?? []) {
+    const sid = String((e as any).session_id);
+    const type = String((e as any).type);
+    if (type === "otp_sent") hasOtpSent.add(sid);
+    if (type === "otp_verified") hasOtpVerified.add(sid);
+    if (type === "answer") {
+      const qo = Number((e as any).question_order);
+      if (!Number.isFinite(qo)) continue;
+      const prev = maxAnswered.get(sid) ?? 0;
+      maxAnswered.set(sid, Math.max(prev, qo));
+    }
+  }
+
+  let maxQuestions = 0;
+  if (formId) {
+    const { data: qRows, error: qErr } = await supabase
+      .from("ff_questions")
+      .select("order")
+      .eq("form_id", formId)
+      .order("order", { ascending: false })
+      .limit(1);
+    if (qErr) throw qErr;
+    maxQuestions = Number(qRows?.[0]?.order ?? 0);
+  } else {
+    // fallback: infer from max answered
+    maxQuestions = Math.max(0, ...[...maxAnswered.values()]);
+  }
+
+  const steps: FunnelStep[] = [];
+  steps.push({ key: "otp_sent", label: "נשלח קוד", count: hasOtpSent.size });
+  steps.push({ key: "otp_verified", label: "אומת קוד", count: hasOtpVerified.size });
+  for (let i = 1; i <= maxQuestions; i++) {
+    let c = 0;
+    for (const sid of ids) {
+      if ((maxAnswered.get(String(sid)) ?? 0) >= i) c++;
+    }
+    steps.push({ key: `answered_${i}`, label: `ענו על שאלה ${i}`, count: c });
+  }
+  const completed = (sessions ?? []).filter((s) => (s as any).status === "completed").length;
+  steps.push({ key: "completed", label: "הושלם", count: completed });
+
+  return { totalSessions: ids.length, steps };
 }
 
 export async function upsertAnswer(args: {
@@ -632,4 +932,90 @@ export async function addOtpFailedEvent(sessionId: string) {
 
   const supabase = getSupabaseServerClient();
   await supabase.from("ff_events").insert({ session_id: sessionId, type: "otp_failed" });
+}
+
+export type ReportsOverview = {
+  funnel: {
+    started: number;
+    verified: number;
+    completed: number;
+  };
+  answersByQuestionOrder: Array<{ questionOrder: number; answers: number }>;
+};
+
+export async function getReportsOverview(args: {
+  formId?: string | null;
+}): Promise<ReportsOverview> {
+  const env = getServerEnv();
+  const formId = args.formId ?? null;
+
+  if (env.USE_MOCK_DATA) {
+    const sessions = mockStore
+      .listSessions()
+      .filter((s: any) => (formId ? s.formId === formId : true));
+    const funnel = {
+      started: sessions.length,
+      verified: sessions.filter((s: any) => s.status === "verified" || s.status === "completed").length,
+      completed: sessions.filter((s: any) => s.status === "completed").length,
+    };
+
+    const sessionIds = new Set(sessions.map((s: any) => s.id));
+    const allEvents: any[] = (globalThis as any).__ffMockState?.events ?? [];
+    const byQ = new Map<number, Set<string>>();
+    for (const e of allEvents) {
+      if (!sessionIds.has(e.sessionId)) continue;
+      if (e.type !== "answer") continue;
+      const qo = Number(e.questionOrder);
+      if (!Number.isFinite(qo)) continue;
+      const set = byQ.get(qo) ?? new Set<string>();
+      set.add(String(e.sessionId));
+      byQ.set(qo, set);
+    }
+    const answersByQuestionOrder = [...byQ.entries()]
+      .map(([questionOrder, set]) => ({ questionOrder, answers: set.size }))
+      .sort((a, b) => a.questionOrder - b.questionOrder);
+
+    return { funnel, answersByQuestionOrder };
+  }
+
+  const supabase = getSupabaseServerClient();
+  const sessionsQ = supabase
+    .from("ff_sessions")
+    .select("id, form_id, status")
+    .order("created_at", { ascending: false });
+  if (formId) sessionsQ.eq("form_id", formId);
+  const { data: sessions, error: sErr } = await sessionsQ;
+  if (sErr) throw sErr;
+
+  const funnel = {
+    started: (sessions ?? []).length,
+    verified: (sessions ?? []).filter((s) => s.status === "verified" || s.status === "completed").length,
+    completed: (sessions ?? []).filter((s) => s.status === "completed").length,
+  };
+
+  const ids = (sessions ?? []).map((s) => s.id);
+  if (ids.length === 0) return { funnel, answersByQuestionOrder: [] };
+
+  const { data: evs, error: eErr } = await supabase
+    .from("ff_events")
+    .select("session_id, type, question_order")
+    .in("session_id", ids)
+    .eq("type", "answer");
+  if (eErr) throw eErr;
+
+  const byQ = new Map<number, Set<string>>();
+  for (const e of evs ?? []) {
+    const qo = Number((e as any).question_order);
+    if (!Number.isFinite(qo)) continue;
+    const sid = String((e as any).session_id);
+    const set = byQ.get(qo) ?? new Set<string>();
+    set.add(sid);
+    byQ.set(qo, set);
+  }
+
+  const answersByQuestionOrder = [...byQ.entries()]
+    .map(([questionOrder, set]) => ({ questionOrder, answers: set.size }))
+    .sort((a, b) => a.questionOrder - b.questionOrder);
+
+  return { funnel, answersByQuestionOrder };
 }

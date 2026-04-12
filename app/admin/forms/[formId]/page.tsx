@@ -13,6 +13,15 @@ type FormPayload = {
     welcomeSubtitle: string;
     completionTitle: string;
     completionSubtitle: string;
+    chatCopy: {
+      introTitle: string;
+      introSubtitle: string;
+      askName: string;
+      askEmail: string;
+      askPhone: string;
+      otpPrompt: string;
+    };
+    nudges: Array<{ atQuestionOrder: number; text: string }>;
     nudgeQuestionOrder: number | null;
     nudgeText: string | null;
   };
@@ -39,6 +48,9 @@ export default function AdminFormEditPage() {
   const [newQText, setNewQText] = useState("");
   const [newQRequired, setNewQRequired] = useState(true);
   const [newQAllowOther, setNewQAllowOther] = useState(true);
+
+  const [nudgesSaving, setNudgesSaving] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -83,6 +95,33 @@ export default function AdminFormEditPage() {
       setData((prev) => (prev ? { ...prev, form: { ...prev.form, ...(json as any) } } : prev));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function deleteForm() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/forms/${encodeURIComponent(formId)}`, { method: "DELETE" });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as any;
+        setError(json?.error ?? "שגיאה במחיקה");
+        return;
+      }
+      router.replace("/admin/forms");
+      router.refresh();
+    } finally {
+      setSaving(false);
+      setDeleteOpen(false);
+    }
+  }
+
+  async function saveNudges(nudges: Array<{ atQuestionOrder: number; text: string }>) {
+    setNudgesSaving(true);
+    try {
+      await saveFormPatch({ nudges });
+    } finally {
+      setNudgesSaving(false);
     }
   }
 
@@ -179,6 +218,15 @@ export default function AdminFormEditPage() {
         <div className="flex items-center gap-2">
           <CopyClientLinkButton slug={data.form.slug} />
           <button
+            type="button"
+            onClick={() => setDeleteOpen(true)}
+            disabled={saving}
+            className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm text-red-700 transition-all hover:bg-red-50 disabled:opacity-50"
+          >
+            מחיקת טופס
+          </button>
+          <button
+            type="button"
             className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 transition-all hover:bg-zinc-100"
             onClick={() => router.push("/admin/forms")}
           >
@@ -189,6 +237,33 @@ export default function AdminFormEditPage() {
 
       {error ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+      ) : null}
+
+      {deleteOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-lg">
+            <div className="text-base font-semibold text-zinc-900">מחיקת טופס</div>
+            <div className="mt-2 text-sm leading-6 text-zinc-600">הפעולה הזו תמחק את הטופס וכל השאלות שלו. הפעולה אינה הפיכה.</div>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteOpen(false)}
+                disabled={saving}
+                className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 transition-all hover:bg-zinc-100 disabled:opacity-50"
+              >
+                ביטול
+              </button>
+              <button
+                type="button"
+                onClick={deleteForm}
+                disabled={saving}
+                className="rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white transition-all hover:bg-red-700 disabled:opacity-50"
+              >
+                {saving ? "מוחק..." : "כן, למחוק"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -205,40 +280,226 @@ export default function AdminFormEditPage() {
             />
 
             <label className="text-xs text-zinc-500">Welcome title</label>
-            <input
+            <textarea
               value={data.form.welcomeTitle}
               onChange={(e) => setData({ ...data, form: { ...data.form, welcomeTitle: e.target.value } })}
               onBlur={() => saveFormPatch({ welcomeTitle: data.form.welcomeTitle })}
               disabled={saving}
-              className="h-11 rounded-xl border border-zinc-300 px-3 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
+              rows={2}
+              className="min-h-20 resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
             />
 
             <label className="text-xs text-zinc-500">Welcome subtitle</label>
-            <input
+            <textarea
               value={data.form.welcomeSubtitle}
               onChange={(e) => setData({ ...data, form: { ...data.form, welcomeSubtitle: e.target.value } })}
               onBlur={() => saveFormPatch({ welcomeSubtitle: data.form.welcomeSubtitle })}
               disabled={saving}
-              className="h-11 rounded-xl border border-zinc-300 px-3 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
+              rows={3}
+              className="min-h-24 resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
             />
 
             <label className="text-xs text-zinc-500">Completion title</label>
-            <input
+            <textarea
               value={data.form.completionTitle}
               onChange={(e) => setData({ ...data, form: { ...data.form, completionTitle: e.target.value } })}
               onBlur={() => saveFormPatch({ completionTitle: data.form.completionTitle })}
               disabled={saving}
-              className="h-11 rounded-xl border border-zinc-300 px-3 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
+              rows={2}
+              className="min-h-20 resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
             />
 
             <label className="text-xs text-zinc-500">Completion subtitle</label>
-            <input
+            <textarea
               value={data.form.completionSubtitle}
               onChange={(e) => setData({ ...data, form: { ...data.form, completionSubtitle: e.target.value } })}
               onBlur={() => saveFormPatch({ completionSubtitle: data.form.completionSubtitle })}
               disabled={saving}
-              className="h-11 rounded-xl border border-zinc-300 px-3 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
+              rows={3}
+              className="min-h-24 resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
             />
+
+            <div className="mt-2 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+              <div className="text-sm font-medium text-zinc-900">טקסטים של הצ׳אט בתחילת השאלון</div>
+              <div className="mt-1 text-xs text-zinc-600">אפשר להדביק טקסט רב־שורות עם אימוג׳ים. זה מוצג ללקוח כמו צ׳אט בוט.</div>
+
+              <div className="mt-4 grid grid-cols-1 gap-3">
+                <label className="text-xs text-zinc-500">כותרת פתיחה</label>
+                <textarea
+                  value={data.form.chatCopy?.introTitle ?? ""}
+                  onChange={(e) =>
+                    setData({
+                      ...data,
+                      form: { ...data.form, chatCopy: { ...(data.form.chatCopy as any), introTitle: e.target.value } },
+                    })
+                  }
+                  onBlur={() => saveFormPatch({ chatCopy: data.form.chatCopy })}
+                  disabled={saving}
+                  rows={2}
+                  className="min-h-20 resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none focus:border-emerald-500 disabled:opacity-60"
+                />
+
+                <label className="text-xs text-zinc-500">תת־כותרת פתיחה</label>
+                <textarea
+                  value={data.form.chatCopy?.introSubtitle ?? ""}
+                  onChange={(e) =>
+                    setData({
+                      ...data,
+                      form: { ...data.form, chatCopy: { ...(data.form.chatCopy as any), introSubtitle: e.target.value } },
+                    })
+                  }
+                  onBlur={() => saveFormPatch({ chatCopy: data.form.chatCopy })}
+                  disabled={saving}
+                  rows={3}
+                  className="min-h-24 resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none focus:border-emerald-500 disabled:opacity-60"
+                />
+
+                <label className="text-xs text-zinc-500">שאלה: שם</label>
+                <textarea
+                  value={data.form.chatCopy?.askName ?? ""}
+                  onChange={(e) =>
+                    setData({
+                      ...data,
+                      form: { ...data.form, chatCopy: { ...(data.form.chatCopy as any), askName: e.target.value } },
+                    })
+                  }
+                  onBlur={() => saveFormPatch({ chatCopy: data.form.chatCopy })}
+                  disabled={saving}
+                  rows={2}
+                  className="min-h-20 resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none focus:border-emerald-500 disabled:opacity-60"
+                />
+
+                <label className="text-xs text-zinc-500">שאלה: מייל</label>
+                <textarea
+                  value={data.form.chatCopy?.askEmail ?? ""}
+                  onChange={(e) =>
+                    setData({
+                      ...data,
+                      form: { ...data.form, chatCopy: { ...(data.form.chatCopy as any), askEmail: e.target.value } },
+                    })
+                  }
+                  onBlur={() => saveFormPatch({ chatCopy: data.form.chatCopy })}
+                  disabled={saving}
+                  rows={2}
+                  className="min-h-20 resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none focus:border-emerald-500 disabled:opacity-60"
+                />
+
+                <label className="text-xs text-zinc-500">שאלה: טלפון</label>
+                <textarea
+                  value={data.form.chatCopy?.askPhone ?? ""}
+                  onChange={(e) =>
+                    setData({
+                      ...data,
+                      form: { ...data.form, chatCopy: { ...(data.form.chatCopy as any), askPhone: e.target.value } },
+                    })
+                  }
+                  onBlur={() => saveFormPatch({ chatCopy: data.form.chatCopy })}
+                  disabled={saving}
+                  rows={2}
+                  className="min-h-20 resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none focus:border-emerald-500 disabled:opacity-60"
+                />
+
+                <label className="text-xs text-zinc-500">הודעה לפני הזנת קוד אימות</label>
+                <textarea
+                  value={data.form.chatCopy?.otpPrompt ?? ""}
+                  onChange={(e) =>
+                    setData({
+                      ...data,
+                      form: { ...data.form, chatCopy: { ...(data.form.chatCopy as any), otpPrompt: e.target.value } },
+                    })
+                  }
+                  onBlur={() => saveFormPatch({ chatCopy: data.form.chatCopy })}
+                  disabled={saving}
+                  rows={2}
+                  className="min-h-20 resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none focus:border-emerald-500 disabled:opacity-60"
+                />
+              </div>
+            </div>
+
+            <div className="mt-2 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+              <div className="text-sm font-medium text-zinc-900">עידודים במהלך השאלון</div>
+              <div className="mt-1 text-xs text-zinc-600">מופיעים ללקוח לפני שאלות מסוימות (למשל: ״מעולה ממשיכים 💪״).</div>
+
+              <div className="mt-4 flex flex-col gap-3">
+                {(data.form.nudges ?? []).length === 0 ? (
+                  <div className="text-sm text-zinc-600">עדיין אין עידודים.</div>
+                ) : (
+                  (data.form.nudges ?? []).map((n, idx) => (
+                    <div key={idx} className="rounded-xl border border-zinc-200 bg-white p-3">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+                        <div className="sm:col-span-2">
+                          <label className="text-xs text-zinc-500">לפני שאלה מספר</label>
+                          <input
+                            value={String(n.atQuestionOrder)}
+                            onChange={(e) => {
+                              const v = e.target.value.trim();
+                              const num = v ? Number(v) : 1;
+                              const next = [...(data.form.nudges ?? [])];
+                              next[idx] = { ...next[idx], atQuestionOrder: Number.isFinite(num) ? Math.max(1, Math.floor(num)) : 1 };
+                              setData({ ...data, form: { ...data.form, nudges: next } });
+                            }}
+                            disabled={saving || nudgesSaving}
+                            inputMode="numeric"
+                            className="mt-1 h-11 w-full rounded-xl border border-zinc-300 px-3 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
+                          />
+                        </div>
+                        <div className="sm:col-span-3">
+                          <label className="text-xs text-zinc-500">טקסט</label>
+                          <textarea
+                            value={n.text}
+                            onChange={(e) => {
+                              const next = [...(data.form.nudges ?? [])];
+                              next[idx] = { ...next[idx], text: e.target.value };
+                              setData({ ...data, form: { ...data.form, nudges: next } });
+                            }}
+                            disabled={saving || nudgesSaving}
+                            rows={2}
+                            className="mt-1 min-h-20 w-full resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-2 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = (data.form.nudges ?? []).filter((_, i) => i !== idx);
+                            setData({ ...data, form: { ...data.form, nudges: next } });
+                          }}
+                          disabled={saving || nudgesSaving}
+                          className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 transition-all hover:bg-zinc-100 disabled:opacity-60"
+                        >
+                          מחיקה
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = [...(data.form.nudges ?? [])];
+                      next.push({ atQuestionOrder: 1, text: "" });
+                      setData({ ...data, form: { ...data.form, nudges: next } });
+                    }}
+                    disabled={saving || nudgesSaving}
+                    className="h-11 rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-700 transition-all hover:bg-zinc-100 disabled:opacity-60"
+                  >
+                    הוסף עידוד
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => saveNudges(data.form.nudges ?? [])}
+                    disabled={saving || nudgesSaving}
+                    className="h-11 rounded-xl bg-emerald-600 px-4 text-sm text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {nudgesSaving ? "שומר..." : "שמירת עידודים"}
+                  </button>
+                </div>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
@@ -263,12 +524,13 @@ export default function AdminFormEditPage() {
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-xs text-zinc-500">נאג׳ - טקסט</label>
-                <input
+                <textarea
                   value={data.form.nudgeText ?? ""}
                   onChange={(e) => setData({ ...data, form: { ...data.form, nudgeText: e.target.value || null } })}
                   onBlur={() => saveFormPatch({ nudgeText: data.form.nudgeText })}
                   disabled={saving}
-                  className="h-11 rounded-xl border border-zinc-300 px-3 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
+                  rows={2}
+                  className="min-h-20 resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
                 />
               </div>
             </div>

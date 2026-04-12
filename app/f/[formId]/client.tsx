@@ -28,6 +28,15 @@ type Bootstrap = {
     welcomeSubtitle: string;
     completionTitle: string;
     completionSubtitle: string;
+    chatCopy: {
+      introTitle: string;
+      introSubtitle: string;
+      askName: string;
+      askEmail: string;
+      askPhone: string;
+      otpPrompt: string;
+    };
+    nudges: Array<{ atQuestionOrder: number; text: string }>;
     nudgeQuestionOrder: number | null;
     nudgeText: string | null;
   };
@@ -67,14 +76,17 @@ function normalizeEmail(v: string) {
 
 export default function FormChatClient({ formSlug }: { formSlug: string }) {
   const [stage, setStage] = useState<
-    | "collect"
+    | "collect_intro"
+    | "collect_name"
+    | "collect_email"
+    | "collect_phone"
     | "sending"
     | "await_code"
     | "verifying"
     | "loading_form"
     | "question"
     | "done"
-  >("collect");
+  >("collect_intro");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -101,6 +113,36 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
   const [typing, setTyping] = useState(false);
   const [questionShownAtIso, setQuestionShownAtIso] = useState<string | null>(null);
   const [botStatus, setBotStatus] = useState<string>("מאובטח");
+  const [progressPulse, setProgressPulse] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const bootRes = await fetch(`/api/form/bootstrap?formSlug=${encodeURIComponent(formSlug)}`);
+        if (!bootRes.ok) return;
+        const boot = (await bootRes.json()) as Bootstrap;
+        setBootstrap(boot);
+      } catch {
+        // ignore
+      }
+    })();
+  }, [formSlug]);
+
+  const chatCopy =
+    bootstrap?.form.chatCopy ??
+    ({
+      introTitle: "שלום! 👋",
+      introSubtitle: "כדי להתחיל נבקש כמה פרטים ואז נשלח קוד אימות למייל.",
+      askName: "מה שמך?",
+      askEmail: "מה המייל שנשלח אליו קוד אימות?",
+      askPhone: "מה מספר הטלפון שלך?",
+      otpPrompt: "שלחתי קוד אימות למייל — הזן אותו כאן:",
+    } as const);
+
+  const askNameClean = useMemo(() => {
+    const raw = String(chatCopy.askName ?? "");
+    return raw.replace(/\(\s*לא חובה\s*\)/g, "").replace(/לא חובה/g, "").trim();
+  }, [chatCopy.askName]);
 
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -113,6 +155,13 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
   const currentQuestion = bootstrap?.questions[qIndex] ?? null;
   const totalQuestions = bootstrap?.questions.length ?? 0;
   const progressPct = totalQuestions > 0 ? Math.round(((qIndex + 1) / totalQuestions) * 100) : 0;
+
+  useEffect(() => {
+    if (stage !== "question") return;
+    setProgressPulse(true);
+    const t = setTimeout(() => setProgressPulse(false), 450);
+    return () => clearTimeout(t);
+  }, [qIndex, stage]);
 
   useEffect(() => {
     if (stage === "question") {
@@ -141,28 +190,62 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
       return base;
     }
 
-    if (!bootstrap) {
-      base.push({ id: "w1", from: "bot", text: "שלום! ", atIso: new Date().toISOString() });
+    base.push({ id: "w1", from: "bot", text: chatCopy.introTitle, atIso: new Date().toISOString() });
+    base.push({
+      id: "w2",
+      from: "bot",
+      text: chatCopy.introSubtitle,
+      subtle: true,
+      atIso: new Date().toISOString(),
+    });
+
+    // Always keep contact info visible after it was entered
+    if (stage !== "collect_intro" && stage !== "collect_name" && name.trim()) {
+      base.push({ id: "c_name", from: "user", text: `שם: ${name.trim()}`, atIso: new Date().toISOString() });
+    }
+    if (
+      stage !== "collect_intro" &&
+      stage !== "collect_name" &&
+      stage !== "collect_email" &&
+      normalizeEmail(email).length > 0
+    ) {
+      base.push({ id: "c_email", from: "user", text: `מייל: ${normalizeEmail(email)}`, atIso: new Date().toISOString() });
+    }
+    if (
+      stage !== "collect_intro" &&
+      stage !== "collect_name" &&
+      stage !== "collect_email" &&
+      stage !== "collect_phone" &&
+      phone.trim().length > 0
+    ) {
+      base.push({ id: "c_phone", from: "user", text: `טלפון: ${phone.trim()}`, atIso: new Date().toISOString() });
+    }
+
+    if (stage === "collect_name") {
+      base.push({ id: "p_name", from: "bot", text: askNameClean, atIso: new Date().toISOString() });
+    }
+    if (stage === "collect_email") {
+      base.push({ id: "p_email", from: "bot", text: chatCopy.askEmail, atIso: new Date().toISOString() });
+    }
+    if (stage === "collect_phone") {
+      base.push({ id: "p_phone", from: "bot", text: chatCopy.askPhone, atIso: new Date().toISOString() });
+    }
+
+    if (stage === "sending") {
       base.push({
-        id: "w2",
+        id: "otp_sending",
         from: "bot",
-        text: "כדי להתחיל נשלח לך קוד אימות למייל.",
+        text: "מעולה — שולח/ת עכשיו קוד אימות למייל שלך...",
         subtle: true,
         atIso: new Date().toISOString(),
       });
-    } else {
-      base.push({ id: "f1", from: "bot", text: bootstrap.form.welcomeTitle, atIso: new Date().toISOString() });
-      base.push({ id: "f2", from: "bot", text: bootstrap.form.welcomeSubtitle, subtle: true, atIso: new Date().toISOString() });
     }
 
-    if (stage !== "collect") {
-      if (name.trim()) base.push({ id: "u1", from: "user", text: `שם: ${name.trim()}`, atIso: new Date().toISOString() });
-      base.push({ id: "u2", from: "user", text: `מייל: ${email.trim()}`, atIso: new Date().toISOString() });
-      if (phone.trim()) base.push({ id: "u2p", from: "user", text: `טלפון: ${phone.trim()}`, atIso: new Date().toISOString() });
+    if (stage === "await_code" || stage === "verifying" || stage === "loading_form") {
       base.push({
         id: "b3",
         from: "bot",
-        text: "שלחתי לך קוד אימות. הזן אותו כאן:",
+        text: chatCopy.otpPrompt,
         atIso: new Date().toISOString(),
       });
 
@@ -207,19 +290,18 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
         return base;
       }
 
-      const shouldNudge =
-        bootstrap.form.nudgeQuestionOrder &&
-        bootstrap.form.nudgeText &&
-        currentQuestion.order === bootstrap.form.nudgeQuestionOrder;
-
-      if (shouldNudge) {
-        base.push({
-          id: "n1",
-          from: "bot",
-          text: bootstrap.form.nudgeText!,
-          subtle: true,
-          atIso: questionShownAtIso ?? new Date().toISOString(),
-        });
+      const nudges = Array.isArray((bootstrap.form as any).nudges) ? (bootstrap.form as any).nudges : [];
+      for (const n of nudges) {
+        if (!n || typeof n !== "object") continue;
+        if (Number(n.atQuestionOrder) === Number(currentQuestion.order) && String(n.text ?? "").trim().length > 0) {
+          base.push({
+            id: `n_${currentQuestion.order}_${String(n.text).slice(0, 16)}`,
+            from: "bot",
+            text: String(n.text),
+            subtle: true,
+            atIso: questionShownAtIso ?? new Date().toISOString(),
+          });
+        }
       }
 
       base.push({
@@ -231,7 +313,14 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
     }
 
     return base;
-  }, [bootstrap, code, currentQuestion, debugCode, email, history, name, phone, questionShownAtIso, stage, typing, verifiedOkAtIso]);
+  }, [askNameClean, bootstrap, code, currentQuestion, debugCode, email, history, name, phone, questionShownAtIso, stage, typing, verifiedOkAtIso]);
+
+  useEffect(() => {
+    if (stage === "collect_intro") {
+      const t = setTimeout(() => setStage("collect_name"), 250);
+      return () => clearTimeout(t);
+    }
+  }, [stage]);
 
   useEffect(() => {
     requestAnimationFrame(() => scrollToBottom("smooth"));
@@ -283,7 +372,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
       const phoneMsg = data?.details?.fieldErrors?.phone?.[0];
       if (phoneMsg) setPhoneError(phoneMsg);
       setError(data?.error ?? "שגיאה בשליחת קוד");
-      setStage("collect");
+      setStage("collect_phone");
       return;
     }
 
@@ -349,20 +438,20 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
     setQuestionShownAtIso(null);
     setTyping(false);
     setBotStatus("מאובטח");
-    setStage("collect");
+    setStage("collect_name");
   }
 
   async function submitAnswer(value: AnswerValue) {
     if (!sessionId || !bootstrap || !currentQuestion) return;
 
     setPendingValue(value);
-    if (value !== "other") {
+    if (value !== 'other') {
       setSaving(true);
       setError(null);
       try {
-        await fetch("/api/form/answer", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
+        await fetch('/api/form/answer', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             sessionId,
             formSlug,
@@ -373,7 +462,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
           }),
         });
 
-        const answerText = value === "yes" ? "כן" : "לא";
+        const answerText = value === 'yes' ? 'כן' : 'לא';
         setHistory((prev) => [
           ...prev,
           {
@@ -386,20 +475,20 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
         ]);
 
         setPendingValue(null);
-        setPendingOtherText("");
-        requestAnimationFrame(() => scrollToBottom("smooth"));
+        setPendingOtherText('');
+        requestAnimationFrame(() => scrollToBottom('smooth'));
         if (qIndex + 1 >= bootstrap.questions.length) {
-          await fetch("/api/form/complete", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
+          await fetch('/api/form/complete', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ sessionId }),
           });
-          setStage("done");
+          setStage('done');
         } else {
           setQIndex((v) => v + 1);
         }
       } catch {
-        setError("שגיאה בשמירת תשובה");
+        setError('שגיאה בשמירת תשובה');
       } finally {
         setSaving(false);
       }
@@ -410,22 +499,22 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
   async function submitOther() {
     if (!sessionId || !bootstrap || !currentQuestion) return;
     if (!pendingOtherText.trim()) {
-      setError("נא לרשום טקסט עבור 'אחר'");
+      setError('נא לרשום טקסט עבור \'אחר\'');
       return;
     }
 
     setSaving(true);
     setError(null);
     try {
-      await fetch("/api/form/answer", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
+      await fetch('/api/form/answer', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           sessionId,
           formSlug,
           questionId: currentQuestion.id,
           questionOrder: currentQuestion.order,
-          value: "other",
+          value: 'other',
           otherText: pendingOtherText.trim(),
         }),
       });
@@ -442,28 +531,28 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
       ]);
 
       setPendingValue(null);
-      setPendingOtherText("");
+      setPendingOtherText('');
 
       if (qIndex + 1 >= bootstrap.questions.length) {
-        await fetch("/api/form/complete", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
+        await fetch('/api/form/complete', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ sessionId }),
         });
-        setStage("done");
+        setStage('done');
       } else {
         setQIndex((v) => v + 1);
       }
     } catch {
-      setError("שגיאה בשמירת תשובה");
+      setError('שגיאה בשמירת תשובה');
     } finally {
       setSaving(false);
     }
   }
 
-  if (stage === "done") {
-    const title = bootstrap?.form.completionTitle || "תודה! הטופס התקבל";
-    const subtitle = bootstrap?.form.completionSubtitle || "אפשר לסגור את החלון.";
+  if (stage === 'done') {
+    const title = bootstrap?.form.completionTitle || 'תודה! הטופס התקבל';
+    const subtitle = bootstrap?.form.completionSubtitle || 'אפשר לסגור את החלון.';
     return (
       <div className="fixed inset-0 overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50 via-zinc-50 to-zinc-100">
         <div className="mx-auto flex h-full w-full max-w-md flex-col p-3 sm:max-w-lg md:max-w-xl">
@@ -472,8 +561,8 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
               <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
                 <Check className="size-6" />
               </div>
-              <div className="mt-4 text-lg font-semibold text-zinc-900">{title}</div>
-              <div className="mt-2 text-sm leading-6 text-zinc-600">{subtitle}</div>
+              <div className="mt-4 whitespace-pre-wrap text-lg font-semibold text-zinc-900">{title}</div>
+              <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-600">{subtitle}</div>
             </div>
           </div>
         </div>
@@ -484,7 +573,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
   return (
     <div className="fixed inset-0 overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50 via-zinc-50 to-zinc-100">
       <div className="mx-auto flex h-full w-full max-w-md flex-col p-3 sm:max-w-lg md:max-w-xl">
-        <div className="flex shrink-0 items-center justify-between rounded-2xl border border-zinc-200 bg-white/80 px-3 py-2 shadow-sm backdrop-blur">
+        <div className="flex shrink-0 items-center justify-between rounded-2xl border border-zinc-200 bg-white/85 px-4 py-3 shadow-sm backdrop-blur">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -498,19 +587,24 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
               <MessageCircle className="size-5" />
             </div>
             <div className="flex flex-col leading-tight">
-              <div className="text-sm font-semibold text-zinc-900">{bootstrap?.form.name ?? "שאלון"}</div>
-              <div className="text-xs text-zinc-500">{stage === "question" ? botStatus : formSlug}</div>
+              <div className="text-base font-semibold text-zinc-900 md:text-lg">{bootstrap?.form.name ?? "שאלון"}</div>
+              <div className="text-xs text-zinc-500">
+                {stage === "question" && currentQuestion ? `שאלה ${currentQuestion.order} מתוך ${totalQuestions}` : formSlug}
+              </div>
             </div>
           </div>
 
-          {stage === "question" && totalQuestions > 0 ? (
+          {stage === 'question' && totalQuestions > 0 ? (
             <div className="flex items-center gap-2">
               <div className="hidden text-xs text-zinc-600 sm:block">
-                {qIndex + 1}/{totalQuestions}
+                {currentQuestion?.order ?? qIndex + 1}/{totalQuestions}
               </div>
               <div className="h-2 w-24 overflow-hidden rounded-full bg-zinc-100">
                 <div
-                  className="h-full rounded-full bg-emerald-500"
+                  className={
+                    "h-full rounded-full bg-emerald-500 transition-all duration-500 ease-out " +
+                    (progressPulse ? "brightness-110" : "")
+                  }
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
@@ -523,16 +617,15 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
           )}
         </div>
 
-        <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.85),rgba(255,255,255,0.85)),url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22 viewBox=%220 0 50 50%22%3E%3Cg fill=%22%23d1fae5%22 fill-opacity=%220.35%22%3E%3Cpath d=%22M25 0l3 6-3 6-3-6 3-6zm0 25l3 6-3 6-3-6 3-6zm0 25l3-6-3-6-3 6 3 6z%22/%3E%3C/g%3E%3C/svg%3E')]
-          shadow-sm">
+        <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.85),rgba(255,255,255,0.85)),url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22 viewBox=%220 0 50 50%22%3E%3Cg fill=%22%23d1fae5%22 fill-opacity=%220.35%22%3E%3Cpath d=%22M25 0l3 6-3 6-3-6 3-6zm0 25l3 6-3 6-3-6 3-6zm0 25l3-6-3-6-3 6 3 6z%22/%3E%3C/g%3E%3C/svg%3E'))] shadow-sm">
           <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
             <div className="mx-auto flex max-w-md flex-col gap-2">
               {messages.map((m) => (
                 <div
                   key={m.id}
-                  className={m.from === "user" ? "flex justify-end" : "flex justify-start"}
+                  className={m.from === 'user' ? 'flex justify-end' : 'flex justify-start'}
                 >
-                  {m.from === "bot" ? (
+                  {m.from === 'bot' ? (
                     <div className="flex max-w-[90%] items-end gap-2">
                       <div className="grid size-8 shrink-0 place-items-center rounded-full bg-emerald-600 text-xs font-semibold text-white">
                         FF
@@ -551,7 +644,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
                             <span className="inline-block size-1.5 animate-bounce rounded-full bg-zinc-400" />
                           </div>
                         ) : (
-                          m.text
+                          <span className="whitespace-pre-wrap break-words">{m.text}</span>
                         )}
                         <div className="mt-1 text-left text-[10px] text-zinc-400">{fmtTime(m.atIso)}</div>
                       </div>
@@ -564,7 +657,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
                         (m.subtle ? " opacity-80" : "")
                       }
                     >
-                      {m.text}
+                      <span className="whitespace-pre-wrap break-words">{m.text}</span>
                       <div className="mt-1 text-left text-[10px] text-emerald-100/90">{fmtTime(m.atIso)}</div>
                     </div>
                   )}
@@ -580,60 +673,101 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
           ) : null}
 
           <div className="shrink-0 border-t border-zinc-200 bg-white/90 p-3 backdrop-blur">
-            {stage === "collect" || stage === "sending" ? (
+            {stage === 'collect_name' ? (
               <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-xs text-zinc-600">
-                  <ShieldCheck className="size-4 text-emerald-600" />
-                  כדי להתחיל, מלא את הפרטים למטה ונשלח קוד אימות
-                </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="שם (לא חובה)"
-                    className="h-11 rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-emerald-500"
-                  />
-                  <input
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="מייל"
-                    className="h-11 rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-emerald-500"
-                    inputMode="email"
-                  />
-                </div>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    setStage("collect_email");
+                  }}
+                  placeholder="הקלד/י שם"
+                  className="h-11 rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-emerald-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setStage('collect_email')}
+                  className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 text-white transition-all hover:bg-emerald-700"
+                >
+                  המשך
+                </button>
+              </div>
+            ) : null}
 
+            {stage === 'collect_email' ? (
+              <div className="flex flex-col gap-2">
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    if (normalizeEmail(email).length === 0) return;
+                    setStage("collect_phone");
+                  }}
+                  placeholder="מייל"
+                  className="h-11 rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-emerald-500"
+                  inputMode="email"
+                />
+                <button
+                  type="button"
+                  onClick={() => setStage('collect_phone')}
+                  disabled={normalizeEmail(email).length === 0}
+                  className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  המשך
+                </button>
+              </div>
+            ) : null}
+
+            {stage === 'collect_phone' || stage === 'sending' ? (
+              <div className="flex flex-col gap-2">
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    const disabled =
+                      saving ||
+                      stage === "sending" ||
+                      normalizeEmail(email).length === 0 ||
+                      digitsOnly(phone).length < 9;
+                    if (disabled) return;
+                    startOtp();
+                  }}
                   placeholder="טלפון"
                   className="h-11 rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-emerald-500"
                   inputMode="tel"
                 />
 
-                {phoneError ? (
-                  <div className="text-sm text-red-600">{phoneError}</div>
-                ) : null}
+                {phoneError ? <div className="text-sm text-red-600">{phoneError}</div> : null}
 
                 <button
                   onClick={startOtp}
-                  disabled={
-                    stage === "sending" ||
-                    normalizeEmail(email).length === 0 ||
-                    digitsOnly(phone).length < 9
-                  }
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white disabled:opacity-50"
+                  disabled={saving || stage === 'sending' || normalizeEmail(email).length === 0 || digitsOnly(phone).length < 9}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
                 >
                   <Send className="size-4" />
-                  {stage === "sending" ? "שולח קוד..." : "שלח קוד אימות"}
+                  {stage === 'sending' ? 'שולח...' : 'שלח קוד אימות'}
                 </button>
               </div>
             ) : null}
 
-            {stage === "await_code" || stage === "verifying" || stage === "loading_form" ? (
+            {stage === 'await_code' || stage === 'verifying' || stage === 'loading_form' ? (
               <div className="flex flex-col gap-2">
                 <input
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    const disabled = stage !== "await_code" || code.length !== 6;
+                    if (disabled) return;
+                    verifyOtp();
+                  }}
                   placeholder="קוד בן 6 ספרות"
                   className="h-11 rounded-xl border border-zinc-300 bg-white px-3 text-left tracking-widest outline-none focus:border-emerald-500"
                   inputMode="numeric"
@@ -700,6 +834,12 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
                     <input
                       value={pendingOtherText}
                       onChange={(e) => setPendingOtherText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        if (saving) return;
+                        submitOther();
+                      }}
                       placeholder="כתוב כאן..."
                       className="h-11 flex-1 rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-emerald-500"
                     />
@@ -716,7 +856,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
                 ) : null}
 
                 <div className="text-center text-xs text-zinc-500">
-                  שאלה {qIndex + 1} מתוך {totalQuestions}
+                  שאלה {currentQuestion.order} מתוך {totalQuestions}
                 </div>
               </div>
             ) : null}

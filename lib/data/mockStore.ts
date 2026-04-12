@@ -17,6 +17,15 @@ const forms: Form[] = [
     welcomeSubtitle: "בוא נתחיל בכמה שאלות קצרות.",
     completionTitle: "תודה! הטופס התקבל",
     completionSubtitle: "אפשר לסגור את החלון.",
+    chatCopy: {
+      introTitle: "שלום! 👋",
+      introSubtitle: "כדי להתחיל נבקש כמה פרטים ואז נשלח קוד אימות למייל.",
+      askName: "מה שמך? (לא חובה)",
+      askEmail: "מה המייל שנשלח אליו קוד אימות?",
+      askPhone: "מה מספר הטלפון שלך?",
+      otpPrompt: "שלחתי קוד אימות למייל — הזן אותו כאן:",
+    },
+    nudges: [],
     nudgeQuestionOrder: 25,
     nudgeText: "יפה מאוד! עוד מעט וסיימת 🙌",
   },
@@ -54,6 +63,9 @@ const events = state.events;
 const answers = state.answers;
 
 export const mockStore = {
+  listSessions() {
+    return [...sessions];
+  },
   listForms() {
     return [...forms].sort((a, b) => a.slug.localeCompare(b.slug));
   },
@@ -72,6 +84,15 @@ export const mockStore = {
       welcomeSubtitle: "בוא נתחיל בכמה שאלות קצרות.",
       completionTitle: "תודה! הטופס התקבל",
       completionSubtitle: "אפשר לסגור את החלון.",
+      chatCopy: {
+        introTitle: "שלום! 👋",
+        introSubtitle: "כדי להתחיל נבקש כמה פרטים ואז נשלח קוד אימות למייל.",
+        askName: "מה שמך? (לא חובה)",
+        askEmail: "מה המייל שנשלח אליו קוד אימות?",
+        askPhone: "מה מספר הטלפון שלך?",
+        otpPrompt: "שלחתי קוד אימות למייל — הזן אותו כאן:",
+      },
+      nudges: [],
       nudgeQuestionOrder: null,
       nudgeText: null,
     };

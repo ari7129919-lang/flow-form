@@ -59,6 +59,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               <NavItem href="/admin" label="דשבורד" icon={LayoutDashboard} />
               <NavItem href="/admin/forms" label="טפסים" icon={FileText} />
               <NavItem href="/admin/sessions" label="תשובות" icon={BarChart3} />
+              <NavItem href="/admin/reports" label="דוחות" icon={BarChart3} />
               <NavItem href="/admin/settings" label="הגדרות" icon={Settings} />
             </nav>
 
@@ -82,7 +83,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               </div>
               <div className="flex flex-col leading-tight">
                 <div className="text-sm font-semibold text-zinc-900">לוח ניהול</div>
-                <div className="text-xs text-zinc-500">ממשק ניהול מקצועי</div>
+                <div className="text-xs text-zinc-500">ממשק ניהול </div>
               </div>
             </div>
 

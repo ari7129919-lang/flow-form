@@ -26,6 +26,24 @@ const updateSchema = z.object({
   welcomeSubtitle: z.string().trim().min(1).optional(),
   completionTitle: z.string().trim().min(1).optional(),
   completionSubtitle: z.string().trim().min(1).optional(),
+  chatCopy: z
+    .object({
+      introTitle: z.string(),
+      introSubtitle: z.string(),
+      askName: z.string(),
+      askEmail: z.string(),
+      askPhone: z.string(),
+      otpPrompt: z.string(),
+    })
+    .optional(),
+  nudges: z
+    .array(
+      z.object({
+        atQuestionOrder: z.number().int().positive(),
+        text: z.string(),
+      }),
+    )
+    .optional(),
   nudgeQuestionOrder: z.number().int().positive().nullable().optional(),
   nudgeText: z.string().trim().min(1).nullable().optional(),
 });

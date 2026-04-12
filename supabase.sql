@@ -11,6 +11,8 @@ create table if not exists public.ff_forms (
   welcome_subtitle text not null default 'בוא נתחיל בכמה שאלות קצרות.',
   completion_title text not null default 'תודה! הטופס התקבל',
   completion_subtitle text not null default 'אפשר לסגור את החלון.',
+  chat_copy jsonb not null default '{"introTitle":"שלום! 👋","introSubtitle":"כדי להתחיל נבקש כמה פרטים ואז נשלח קוד אימות למייל.","askName":"מה שמך? (לא חובה)","askEmail":"מה המייל שנשלח אליו קוד אימות?","askPhone":"מה מספר הטלפון שלך?","otpPrompt":"שלחתי קוד אימות למייל — הזן אותו כאן:"}'::jsonb,
+  nudges jsonb not null default '[]'::jsonb,
   nudge_question_order int null,
   nudge_text text null,
   created_at timestamptz not null default now()
@@ -21,6 +23,12 @@ alter table public.ff_forms
 
 alter table public.ff_forms
   add column if not exists completion_subtitle text not null default 'אפשר לסגור את החלון.';
+
+alter table public.ff_forms
+  add column if not exists nudges jsonb not null default '[]'::jsonb;
+
+alter table public.ff_forms
+  add column if not exists chat_copy jsonb not null default '{"introTitle":"שלום! 👋","introSubtitle":"כדי להתחיל נבקש כמה פרטים ואז נשלח קוד אימות למייל.","askName":"מה שמך? (לא חובה)","askEmail":"מה המייל שנשלח אליו קוד אימות?","askPhone":"מה מספר הטלפון שלך?","otpPrompt":"שלחתי קוד אימות למייל — הזן אותו כאן:"}'::jsonb;
 
 create table if not exists public.ff_questions (
   id uuid primary key default gen_random_uuid(),

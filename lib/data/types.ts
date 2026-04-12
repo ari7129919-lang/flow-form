@@ -6,6 +6,15 @@ export type Form = {
   welcomeSubtitle: string;
   completionTitle: string;
   completionSubtitle: string;
+  chatCopy: {
+    introTitle: string;
+    introSubtitle: string;
+    askName: string;
+    askEmail: string;
+    askPhone: string;
+    otpPrompt: string;
+  };
+  nudges: Array<{ atQuestionOrder: number; text: string }>;
   nudgeQuestionOrder: number | null;
   nudgeText: string | null;
 };

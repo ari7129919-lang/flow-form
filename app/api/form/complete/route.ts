@@ -4,6 +4,19 @@ import { completeSession, getSessionReport } from "@/lib/data";
 import { getAdminReceiverEmail } from "@/lib/settings";
 import { sendMail } from "@/lib/mailerServer";
 
+function fmtDateTime(iso?: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleString("he-IL", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 const bodySchema = z.object({
   sessionId: z.string().uuid(),
 });
@@ -34,6 +47,7 @@ export async function POST(req: Request) {
       lines.push(`מייל: ${session.email ?? ""}`);
       lines.push(`טלפון: ${session.phone ?? ""}`);
       lines.push(`שם: ${session.name ?? ""}`);
+      lines.push(`זמן סיום: ${fmtDateTime(session.completedAt ?? session.completed_at ?? null)}`);
       lines.push("");
       for (const q of questions) {
         const a = byQuestionId.get(q.id);
@@ -60,7 +74,7 @@ export async function POST(req: Request) {
         text: lines.join("\n"),
         html: `<div dir="rtl" style="font-family:Arial,Helvetica,sans-serif;line-height:1.6">
           <h2 style="margin:0 0 12px">טופס חדש התקבל</h2>
-          <div style="color:#3f3f46;font-size:13px;margin:0 0 10px">מייל: <b>${escapeHtml(session.email ?? "")}</b> | טלפון: <b>${escapeHtml(session.phone ?? "")}</b> | שם: <b>${escapeHtml(session.name ?? "")}</b></div>
+          <div style="color:#3f3f46;font-size:13px;margin:0 0 10px">מייל: <b>${escapeHtml(session.email ?? "")}</b> | טלפון: <b>${escapeHtml(session.phone ?? "")}</b> | שם: <b>${escapeHtml(session.name ?? "")}</b> | זמן סיום: <b>${escapeHtml(fmtDateTime(session.completedAt ?? session.completed_at ?? null))}</b></div>
           <div style="border:1px solid #e4e4e7;border-radius:12px;overflow:hidden">
             ${questions
               .map((q) => {
