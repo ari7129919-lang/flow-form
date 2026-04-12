@@ -50,7 +50,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 FF
               </div>
               <div className="flex flex-col">
-                <div className="text-sm font-semibold text-zinc-900">Flow Form</div>
+                <div className="text-sm font-semibold text-zinc-900">אלישבע יועצת מס בחירה ...</div>
                 <div className="text-xs text-zinc-600">Admin</div>
               </div>
             </div>

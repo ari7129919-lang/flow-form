@@ -1,8 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import CopyClientLinkButton from "../CopyClientLinkButton";
+
+type TabKey = "details" | "questions" | "nudges" | "danger";
+
+function isTabKey(v: string | null): v is TabKey {
+  return v === "details" || v === "questions" || v === "nudges" || v === "danger";
+}
 
 type FormPayload = {
   form: {
@@ -37,8 +43,12 @@ type FormPayload = {
 
 export default function AdminFormEditPage() {
   const router = useRouter();
+  const sp = useSearchParams();
   const params = useParams<{ formId: string }>();
   const formId = params.formId;
+
+  const tabRaw = sp.get("tab");
+  const tab: TabKey = isTabKey(tabRaw) ? tabRaw : "details";
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -219,20 +229,63 @@ export default function AdminFormEditPage() {
           <CopyClientLinkButton slug={data.form.slug} />
           <button
             type="button"
-            onClick={() => setDeleteOpen(true)}
-            disabled={saving}
-            className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm text-red-700 transition-all hover:bg-red-50 disabled:opacity-50"
-          >
-            מחיקת טופס
-          </button>
-          <button
-            type="button"
             className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 transition-all hover:bg-zinc-100"
             onClick={() => router.push("/admin/forms")}
           >
             חזרה
           </button>
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => router.replace(`/admin/forms/${encodeURIComponent(formId)}?tab=details`)}
+          className={
+            "rounded-xl border px-3 py-2 text-sm transition-all " +
+            (tab === "details"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100")
+          }
+        >
+          פרטים
+        </button>
+        <button
+          type="button"
+          onClick={() => router.replace(`/admin/forms/${encodeURIComponent(formId)}?tab=questions`)}
+          className={
+            "rounded-xl border px-3 py-2 text-sm transition-all " +
+            (tab === "questions"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100")
+          }
+        >
+          שאלות
+        </button>
+        <button
+          type="button"
+          onClick={() => router.replace(`/admin/forms/${encodeURIComponent(formId)}?tab=nudges`)}
+          className={
+            "rounded-xl border px-3 py-2 text-sm transition-all " +
+            (tab === "nudges"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100")
+          }
+        >
+          עידודים
+        </button>
+        <button
+          type="button"
+          onClick={() => router.replace(`/admin/forms/${encodeURIComponent(formId)}?tab=danger`)}
+          className={
+            "rounded-xl border px-3 py-2 text-sm transition-all " +
+            (tab === "danger"
+              ? "border-red-200 bg-red-50 text-red-700"
+              : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100")
+          }
+        >
+          אזור מסוכן
+        </button>
       </div>
 
       {error ? (
@@ -266,10 +319,11 @@ export default function AdminFormEditPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <div className="text-sm font-medium text-zinc-900">פרטי טופס</div>
-          <div className="mt-4 flex flex-col gap-3">
+      {tab === "details" ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <div className="text-sm font-medium text-zinc-900">פרטי טופס</div>
+            <div className="mt-4 flex flex-col gap-3">
             <label className="text-xs text-zinc-500">שם</label>
             <input
               value={data.form.name}
@@ -415,93 +469,217 @@ export default function AdminFormEditPage() {
                 />
               </div>
             </div>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="text-sm font-medium text-zinc-900">מה הלאה?</div>
+            <div className="mt-1 text-xs text-zinc-600">עבור לטאב "שאלות" כדי לערוך ולהוסיף שאלות. לטאב "עידודים" כדי להוסיף הודעות באמצע.</div>
+          </div>
+        </div>
+      ) : null}
 
-            <div className="mt-2 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="text-sm font-medium text-zinc-900">עידודים במהלך השאלון</div>
-              <div className="mt-1 text-xs text-zinc-600">מופיעים ללקוח לפני שאלות מסוימות (למשל: ״מעולה ממשיכים 💪״).</div>
-
+      {tab === "questions" ? (
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+              <div className="text-sm font-medium text-zinc-900">הוספת שאלה</div>
               <div className="mt-4 flex flex-col gap-3">
-                {(data.form.nudges ?? []).length === 0 ? (
-                  <div className="text-sm text-zinc-600">עדיין אין עידודים.</div>
-                ) : (
-                  (data.form.nudges ?? []).map((n, idx) => (
-                    <div key={idx} className="rounded-xl border border-zinc-200 bg-white p-3">
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
-                        <div className="sm:col-span-2">
-                          <label className="text-xs text-zinc-500">לפני שאלה מספר</label>
-                          <input
-                            value={String(n.atQuestionOrder)}
-                            onChange={(e) => {
-                              const v = e.target.value.trim();
-                              const num = v ? Number(v) : 1;
-                              const next = [...(data.form.nudges ?? [])];
-                              next[idx] = { ...next[idx], atQuestionOrder: Number.isFinite(num) ? Math.max(1, Math.floor(num)) : 1 };
-                              setData({ ...data, form: { ...data.form, nudges: next } });
-                            }}
-                            disabled={saving || nudgesSaving}
-                            inputMode="numeric"
-                            className="mt-1 h-11 w-full rounded-xl border border-zinc-300 px-3 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
-                          />
-                        </div>
-                        <div className="sm:col-span-3">
-                          <label className="text-xs text-zinc-500">טקסט</label>
-                          <textarea
-                            value={n.text}
-                            onChange={(e) => {
-                              const next = [...(data.form.nudges ?? [])];
-                              next[idx] = { ...next[idx], text: e.target.value };
-                              setData({ ...data, form: { ...data.form, nudges: next } });
-                            }}
-                            disabled={saving || nudgesSaving}
-                            rows={2}
-                            className="mt-1 min-h-20 w-full resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
-                          />
-                        </div>
+                <label className="text-xs text-zinc-500">טקסט שאלה</label>
+                <input
+                  value={newQText}
+                  onChange={(e) => setNewQText(e.target.value)}
+                  disabled={saving}
+                  className="h-11 rounded-xl border border-zinc-300 px-3 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
+                  placeholder="כתוב שאלה..."
+                />
+
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <label className="flex items-center gap-2 text-sm text-zinc-700">
+                    <input
+                      type="checkbox"
+                      checked={newQRequired}
+                      onChange={(e) => setNewQRequired(e.target.checked)}
+                    />
+                    חובה
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-zinc-700">
+                    <input
+                      type="checkbox"
+                      checked={newQAllowOther}
+                      onChange={(e) => setNewQAllowOther(e.target.checked)}
+                    />
+                    אפשר "אחר"
+                  </label>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={addQuestion}
+                  disabled={saving || newQText.trim().length === 0}
+                  className="h-11 rounded-xl bg-emerald-600 text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {saving ? "שומר..." : `הוסף שאלה #${nextOrder}`}
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+              <div className="text-sm font-medium text-zinc-900">טיפים</div>
+              <div className="mt-2 text-sm leading-6 text-zinc-600">אפשר לשנות את סדר השאלה (Order) ולערוך את הטקסט. למחיקה יש כפתור ייעודי.</div>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+            <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium">שאלות</div>
+            {data.questions.length === 0 ? (
+              <div className="px-4 py-8 text-sm text-zinc-600">אין שאלות.</div>
+            ) : (
+              <div className="divide-y divide-zinc-100">
+                {data.questions
+                  .slice()
+                  .sort((a, b) => a.order - b.order)
+                  .map((q) => (
+                    <div key={q.id} className="grid grid-cols-12 gap-3 px-4 py-3 transition-colors hover:bg-zinc-50">
+                      <div className="col-span-2">
+                        <input
+                          value={q.order}
+                          onChange={(e) => {
+                            const v = e.target.value.replace(/\D/g, "");
+                            setData({
+                              ...data,
+                              questions: data.questions.map((x) => (x.id === q.id ? { ...x, order: Number(v || 0) } : x)),
+                            });
+                          }}
+                          onBlur={() => updateQuestion(q.id, { order: q.order })}
+                          disabled={saving}
+                          className="h-10 w-full rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500 disabled:opacity-60"
+                          inputMode="numeric"
+                        />
                       </div>
-                      <div className="mt-2 flex justify-end">
+                      <div className="col-span-7">
+                        <input
+                          value={q.text}
+                          onChange={(e) =>
+                            setData({
+                              ...data,
+                              questions: data.questions.map((x) => (x.id === q.id ? { ...x, text: e.target.value } : x)),
+                            })
+                          }
+                          onBlur={() => updateQuestion(q.id, { text: q.text })}
+                          disabled={saving}
+                          className="h-10 w-full rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500 disabled:opacity-60"
+                        />
+                      </div>
+                      <div className="col-span-3 flex items-center justify-end gap-2">
                         <button
                           type="button"
-                          onClick={() => {
-                            const next = (data.form.nudges ?? []).filter((_, i) => i !== idx);
-                            setData({ ...data, form: { ...data.form, nudges: next } });
-                          }}
-                          disabled={saving || nudgesSaving}
-                          className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 transition-all hover:bg-zinc-100 disabled:opacity-60"
+                          onClick={() => deleteQuestion(q.id)}
+                          disabled={saving}
+                          className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-700 transition-all hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
                         >
                           מחיקה
                         </button>
                       </div>
                     </div>
-                  ))
-                )}
+                  ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
 
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = [...(data.form.nudges ?? [])];
-                      next.push({ atQuestionOrder: 1, text: "" });
-                      setData({ ...data, form: { ...data.form, nudges: next } });
-                    }}
-                    disabled={saving || nudgesSaving}
-                    className="h-11 rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-700 transition-all hover:bg-zinc-100 disabled:opacity-60"
-                  >
-                    הוסף עידוד
-                  </button>
+      {tab === "nudges" ? (
+        <div className="flex flex-col gap-4">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <div className="text-sm font-medium text-zinc-900">עידודים במהלך השאלון</div>
+            <div className="mt-1 text-xs text-zinc-600">מופיעים ללקוח לפני שאלות מסוימות (למשל: ״מעולה ממשיכים 💪״).</div>
 
-                  <button
-                    type="button"
-                    onClick={() => saveNudges(data.form.nudges ?? [])}
-                    disabled={saving || nudgesSaving}
-                    className="h-11 rounded-xl bg-emerald-600 px-4 text-sm text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
-                  >
-                    {nudgesSaving ? "שומר..." : "שמירת עידודים"}
-                  </button>
-                </div>
+            <div className="mt-4 flex flex-col gap-3">
+              {(data.form.nudges ?? []).length === 0 ? (
+                <div className="text-sm text-zinc-600">עדיין אין עידודים.</div>
+              ) : (
+                (data.form.nudges ?? []).map((n, idx) => (
+                  <div key={idx} className="rounded-xl border border-zinc-200 bg-white p-3">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+                      <div className="sm:col-span-2">
+                        <label className="text-xs text-zinc-500">לפני שאלה מספר</label>
+                        <input
+                          value={String(n.atQuestionOrder)}
+                          onChange={(e) => {
+                            const v = e.target.value.trim();
+                            const num = v ? Number(v) : 1;
+                            const next = [...(data.form.nudges ?? [])];
+                            next[idx] = { ...next[idx], atQuestionOrder: Number.isFinite(num) ? Math.max(1, Math.floor(num)) : 1 };
+                            setData({ ...data, form: { ...data.form, nudges: next } });
+                          }}
+                          disabled={saving || nudgesSaving}
+                          inputMode="numeric"
+                          className="mt-1 h-11 w-full rounded-xl border border-zinc-300 px-3 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
+                        />
+                      </div>
+                      <div className="sm:col-span-3">
+                        <label className="text-xs text-zinc-500">טקסט</label>
+                        <textarea
+                          value={n.text}
+                          onChange={(e) => {
+                            const next = [...(data.form.nudges ?? [])];
+                            next[idx] = { ...next[idx], text: e.target.value };
+                            setData({ ...data, form: { ...data.form, nudges: next } });
+                          }}
+                          disabled={saving || nudgesSaving}
+                          rows={2}
+                          className="mt-1 min-h-20 w-full resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = (data.form.nudges ?? []).filter((_, i) => i !== idx);
+                          setData({ ...data, form: { ...data.form, nudges: next } });
+                        }}
+                        disabled={saving || nudgesSaving}
+                        className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 transition-all hover:bg-zinc-100 disabled:opacity-60"
+                      >
+                        מחיקה
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = [...(data.form.nudges ?? [])];
+                    next.push({ atQuestionOrder: 1, text: "" });
+                    setData({ ...data, form: { ...data.form, nudges: next } });
+                  }}
+                  disabled={saving || nudgesSaving}
+                  className="h-11 rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-700 transition-all hover:bg-zinc-100 disabled:opacity-60"
+                >
+                  הוסף עידוד
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => saveNudges(data.form.nudges ?? [])}
+                  disabled={saving || nudgesSaving}
+                  className="h-11 rounded-xl bg-emerald-600 px-4 text-sm text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {nudgesSaving ? "שומר..." : "שמירת עידודים"}
+                </button>
               </div>
             </div>
+          </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <div className="text-sm font-medium text-zinc-900">תאימות לאחור (ישן)</div>
+            <div className="mt-1 text-xs text-zinc-600">אם יש שימוש בשדה נאג׳ הישן, אפשר לערוך גם כאן.</div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
                 <label className="text-xs text-zinc-500">נאג׳ - מספר שאלה</label>
                 <input
@@ -536,106 +714,24 @@ export default function AdminFormEditPage() {
             </div>
           </div>
         </div>
+      ) : null}
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <div className="text-sm font-medium text-zinc-900">הוספת שאלה</div>
-          <div className="mt-4 flex flex-col gap-3">
-            <label className="text-xs text-zinc-500">טקסט שאלה</label>
-            <input
-              value={newQText}
-              onChange={(e) => setNewQText(e.target.value)}
-              disabled={saving}
-              className="h-11 rounded-xl border border-zinc-300 px-3 outline-none transition-colors focus:border-emerald-500 disabled:opacity-60"
-              placeholder="כתוב שאלה..."
-            />
-
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <label className="flex items-center gap-2 text-sm text-zinc-700">
-                <input
-                  type="checkbox"
-                  checked={newQRequired}
-                  onChange={(e) => setNewQRequired(e.target.checked)}
-                />
-                חובה
-              </label>
-              <label className="flex items-center gap-2 text-sm text-zinc-700">
-                <input
-                  type="checkbox"
-                  checked={newQAllowOther}
-                  onChange={(e) => setNewQAllowOther(e.target.checked)}
-                />
-                אפשר "אחר"
-              </label>
-            </div>
-
+      {tab === "danger" ? (
+        <div className="rounded-2xl border border-red-200 bg-white p-5 shadow-sm">
+          <div className="text-sm font-semibold text-zinc-900">אזור מסוכן</div>
+          <div className="mt-2 text-sm leading-6 text-zinc-600">מחיקת טופס תמחק גם את השאלות שלו. הפעולה אינה הפיכה.</div>
+          <div className="mt-4">
             <button
               type="button"
-              onClick={addQuestion}
-              disabled={saving || newQText.trim().length === 0}
-              className="h-11 rounded-xl bg-emerald-600 text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
+              onClick={() => setDeleteOpen(true)}
+              disabled={saving}
+              className="h-11 rounded-xl border border-red-200 bg-white px-4 text-sm font-medium text-red-700 transition-all hover:bg-red-50 disabled:opacity-50"
             >
-              {saving ? "שומר..." : `הוסף שאלה #${nextOrder}`}
+              מחיקת טופס
             </button>
           </div>
         </div>
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium">שאלות</div>
-        {data.questions.length === 0 ? (
-          <div className="px-4 py-8 text-sm text-zinc-600">אין שאלות.</div>
-        ) : (
-          <div className="divide-y divide-zinc-100">
-            {data.questions
-              .slice()
-              .sort((a, b) => a.order - b.order)
-              .map((q) => (
-                <div key={q.id} className="grid grid-cols-12 gap-3 px-4 py-3 transition-colors hover:bg-zinc-50">
-                  <div className="col-span-2">
-                    <input
-                      value={q.order}
-                      onChange={(e) => {
-                        const v = e.target.value.replace(/\D/g, "");
-                        setData({
-                          ...data,
-                          questions: data.questions.map((x) => (x.id === q.id ? { ...x, order: Number(v || 0) } : x)),
-                        });
-                      }}
-                      onBlur={() => updateQuestion(q.id, { order: q.order })}
-                      disabled={saving}
-                      className="h-10 w-full rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500 disabled:opacity-60"
-                      inputMode="numeric"
-                    />
-                  </div>
-                  <div className="col-span-7">
-                    <input
-                      value={q.text}
-                      onChange={(e) =>
-                        setData({
-                          ...data,
-                          questions: data.questions.map((x) => (x.id === q.id ? { ...x, text: e.target.value } : x)),
-                        })
-                      }
-                      onBlur={() => updateQuestion(q.id, { text: q.text })}
-                      disabled={saving}
-                      className="h-10 w-full rounded-xl border border-zinc-300 px-3 text-sm outline-none focus:border-emerald-500 disabled:opacity-60"
-                    />
-                  </div>
-                  <div className="col-span-3 flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => deleteQuestion(q.id)}
-                      disabled={saving}
-                      className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-700 transition-all hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
-                    >
-                      מחיקה
-                    </button>
-                  </div>
-                </div>
-              ))}
-          </div>
-        )}
-      </div>
+      ) : null}
     </div>
   );
 }

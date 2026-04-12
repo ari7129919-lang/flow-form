@@ -1,18 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 export default function CopyClientLinkButton({ slug }: { slug: string }) {
   const [copied, setCopied] = useState(false);
 
-  const url = useMemo(() => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    return origin ? `${origin}/f/${encodeURIComponent(slug)}` : `/f/${encodeURIComponent(slug)}`;
-  }, [slug]);
+  const relativeUrl = `/f/${encodeURIComponent(slug)}`;
 
   async function onCopy() {
     try {
-      await navigator.clipboard.writeText(url);
+      const origin = window.location.origin;
+      const absoluteUrl = `${origin}${relativeUrl}`;
+      await navigator.clipboard.writeText(absoluteUrl);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1200);
     } catch {
@@ -29,7 +28,7 @@ export default function CopyClientLinkButton({ slug }: { slug: string }) {
         (copied ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-50" : "")
       }
       aria-label="העתק קישור ללקוח"
-      title={url}
+      title={relativeUrl}
     >
       {copied ? "הועתק" : "העתק קישור"}
     </button>

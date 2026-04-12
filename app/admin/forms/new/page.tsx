@@ -49,7 +49,7 @@ export default function AdminNewFormPage() {
         <input
           value={slug}
           onChange={(e) => setSlug(e.target.value)}
-          placeholder="slug (לדוגמה: demo)"
+          placeholder="slug (לדוגמה: tax-consultation)"
           className="h-11 rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-500"
         />
 
