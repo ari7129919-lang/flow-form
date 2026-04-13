@@ -19,6 +19,11 @@ type Msg = {
   kind?: "text" | "typing";
 };
 
+type Props = {
+  formSlug: string;
+  initialBootstrap?: Bootstrap | null;
+};
+
 type Bootstrap = {
   form: {
     id: string;
@@ -31,6 +36,8 @@ type Bootstrap = {
     chatCopy: {
       introTitle: string;
       introSubtitle: string;
+      eligibilityQuestion?: string;
+      eligibilityNoMessage?: string;
       askName: string;
       askEmail: string;
       askPhone: string;
@@ -74,12 +81,15 @@ function normalizeEmail(v: string) {
     .toLowerCase();
 }
 
-export default function FormChatClient({ formSlug }: { formSlug: string }) {
+export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
   const [stage, setStage] = useState<
     | "collect_intro"
+    | "eligibility"
+    | "eligibility_no"
     | "collect_name"
     | "collect_email"
     | "collect_phone"
+    | "post_verify"
     | "sending"
     | "await_code"
     | "verifying"
@@ -87,6 +97,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
     | "question"
     | "done"
   >("collect_intro");
+  const [eligibility, setEligibility] = useState<"yes" | "no" | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -97,7 +108,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
   const [debugCode, setDebugCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [verifiedOkAtIso, setVerifiedOkAtIso] = useState<string | null>(null);
-  const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
+  const [bootstrap, setBootstrap] = useState<Bootstrap | null>(initialBootstrap ?? null);
   const [qIndex, setQIndex] = useState(0);
   const [history, setHistory] = useState<
     Array<{
@@ -116,7 +127,17 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
   const [botStatus, setBotStatus] = useState<string>("מאובטח");
   const [progressPulse, setProgressPulse] = useState(false);
 
+  const msgTimesRef = useRef<Map<string, string>>(new Map());
+  const getMsgTime = (id: string) => {
+    const existing = msgTimesRef.current.get(id);
+    if (existing) return existing;
+    const iso = new Date().toISOString();
+    msgTimesRef.current.set(id, iso);
+    return iso;
+  };
+
   useEffect(() => {
+    if (initialBootstrap) return;
     (async () => {
       try {
         const bootRes = await fetch(`/api/form/bootstrap?formSlug=${encodeURIComponent(formSlug)}`);
@@ -127,13 +148,15 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
         // ignore
       }
     })();
-  }, [formSlug]);
+  }, [formSlug, initialBootstrap]);
 
   const chatCopy =
     bootstrap?.form.chatCopy ??
     ({
       introTitle: "שלום! 👋",
       introSubtitle: "כדי להתחיל נבקש כמה פרטים ואז נשלח קוד אימות למייל.",
+      eligibilityQuestion: "רוצה לבדוק זכאות?",
+      eligibilityNoMessage: "אוקי. אם תרצה/י לבדוק זכאות בהמשך, אפשר לחזור לכאן.",
       askName: "מה שמך?",
       askEmail: "מה המייל שנשלח אליו קוד אימות?",
       askPhone: "מה מספר הטלפון שלך?",
@@ -184,6 +207,28 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
     }
   }, [qIndex, stage]);
 
+  useEffect(() => {
+    if (stage === "question" || stage === "done") return;
+    if (stage === "sending" || stage === "verifying" || stage === "loading_form") return;
+
+    setTyping(true);
+    setBotStatus("מקליד...");
+    const t = setTimeout(() => {
+      setTyping(false);
+      setBotStatus("אונליין");
+      requestAnimationFrame(() => scrollToBottom("auto"));
+    }, 520);
+    return () => clearTimeout(t);
+  }, [stage]);
+
+  useEffect(() => {
+    if (stage !== "post_verify") return;
+    const t = setTimeout(() => {
+      setStage("collect_phone");
+    }, 650);
+    return () => clearTimeout(t);
+  }, [stage]);
+
   const messages: Msg[] = useMemo(() => {
     const base: Msg[] = [];
 
@@ -191,18 +236,27 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
       return base;
     }
 
-    base.push({ id: "w1", from: "bot", text: chatCopy.introTitle, atIso: new Date().toISOString() });
+    base.push({ id: "w1", from: "bot", text: chatCopy.introTitle, atIso: getMsgTime("w1") });
     base.push({
       id: "w2",
       from: "bot",
       text: chatCopy.introSubtitle,
       subtle: true,
-      atIso: new Date().toISOString(),
+      atIso: getMsgTime("w2"),
     });
+
+    if (eligibility) {
+      base.push({
+        id: "eligibility_answer",
+        from: "user",
+        text: eligibility === "yes" ? "כן" : "לא",
+        atIso: getMsgTime("eligibility_answer"),
+      });
+    }
 
     // Always keep contact info visible after it was entered
     if (stage !== "collect_intro" && stage !== "collect_name" && name.trim()) {
-      base.push({ id: "c_name", from: "user", text: `שם: ${name.trim()}`, atIso: new Date().toISOString() });
+      base.push({ id: "c_name", from: "user", text: `שם: ${name.trim()}`, atIso: getMsgTime("c_name") });
     }
     if (
       stage !== "collect_intro" &&
@@ -210,7 +264,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
       stage !== "collect_email" &&
       normalizeEmail(email).length > 0
     ) {
-      base.push({ id: "c_email", from: "user", text: `מייל: ${normalizeEmail(email)}`, atIso: new Date().toISOString() });
+      base.push({ id: "c_email", from: "user", text: `מייל: ${normalizeEmail(email)}`, atIso: getMsgTime("c_email") });
     }
     if (
       stage !== "collect_intro" &&
@@ -219,17 +273,63 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
       stage !== "collect_phone" &&
       phone.trim().length > 0
     ) {
-      base.push({ id: "c_phone", from: "user", text: `טלפון: ${phone.trim()}`, atIso: new Date().toISOString() });
+      base.push({ id: "c_phone", from: "user", text: `טלפון: ${phone.trim()}`, atIso: getMsgTime("c_phone") });
+    }
+
+    const shouldTypeForPrompt =
+      stage === "eligibility" ||
+      stage === "eligibility_no" ||
+      stage === "collect_name" ||
+      stage === "collect_email" ||
+      stage === "post_verify" ||
+      stage === "collect_phone" ||
+      stage === "await_code";
+
+    if (typing && shouldTypeForPrompt) {
+      base.push({ id: `typing_${stage}`, from: "bot", text: "מקליד...", kind: "typing", atIso: getMsgTime(`typing_${stage}`) });
+      return base;
+    }
+
+    if (stage === "eligibility") {
+      base.push({
+        id: "eligibility_q",
+        from: "bot",
+        text: String((chatCopy as unknown as { eligibilityQuestion?: unknown }).eligibilityQuestion ?? "רוצה לבדוק זכאות?"),
+        atIso: getMsgTime("eligibility_q"),
+      });
+    }
+
+    if (stage === "eligibility_no") {
+      const noMsg = (chatCopy as unknown as { eligibilityNoMessage?: unknown }).eligibilityNoMessage;
+      base.push({
+        id: "eligibility_no_msg",
+        from: "bot",
+        text: typeof noMsg === "string" && noMsg.trim().length > 0 ? noMsg : "אוקי.",
+        subtle: true,
+        atIso: getMsgTime("eligibility_no_msg"),
+      });
+      return base;
+    }
+
+    if (stage === "post_verify") {
+      base.push({
+        id: "otp_verified_ok",
+        from: "bot",
+        text: "המייל אומת בהצלחה ✅",
+        subtle: true,
+        atIso: verifiedOkAtIso ?? getMsgTime("otp_verified_ok"),
+      });
+      return base;
     }
 
     if (stage === "collect_name") {
-      base.push({ id: "p_name", from: "bot", text: askNameClean, atIso: new Date().toISOString() });
+      base.push({ id: "p_name", from: "bot", text: askNameClean, atIso: getMsgTime("p_name") });
     }
     if (stage === "collect_email") {
-      base.push({ id: "p_email", from: "bot", text: chatCopy.askEmail, atIso: new Date().toISOString() });
+      base.push({ id: "p_email", from: "bot", text: chatCopy.askEmail, atIso: getMsgTime("p_email") });
     }
     if (stage === "collect_phone") {
-      base.push({ id: "p_phone", from: "bot", text: chatCopy.askPhone, atIso: new Date().toISOString() });
+      base.push({ id: "p_phone", from: "bot", text: chatCopy.askPhone, atIso: getMsgTime("p_phone") });
     }
 
     if (stage === "sending") {
@@ -238,7 +338,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
         from: "bot",
         text: "מעולה — שולח/ת עכשיו קוד אימות למייל שלך...",
         subtle: true,
-        atIso: new Date().toISOString(),
+        atIso: getMsgTime("otp_sending"),
       });
     }
 
@@ -247,7 +347,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
         id: "b3",
         from: "bot",
         text: chatCopy.otpPrompt,
-        atIso: new Date().toISOString(),
+        atIso: getMsgTime("b3"),
       });
 
       if (debugCode && stage === "await_code") {
@@ -256,19 +356,9 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
           from: "bot",
           text: `מצב פיתוח: הקוד הוא ${debugCode}`,
           subtle: true,
-          atIso: new Date().toISOString(),
+          atIso: getMsgTime("dbg"),
         });
       }
-    }
-
-    if (verifiedOkAtIso && stage === "collect_phone") {
-      base.push({
-        id: "otp_verified_ok",
-        from: "bot",
-        text: "המייל אומת בהצלחה ✅",
-        subtle: true,
-        atIso: verifiedOkAtIso,
-      });
     }
 
     if (stage === "question" && bootstrap && currentQuestion) {
@@ -306,14 +396,30 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
     }
 
     return base;
-  }, [askNameClean, bootstrap, code, currentQuestion, debugCode, email, history, name, phone, questionShownAtIso, stage, typing, verifiedOkAtIso]);
+  }, [askNameClean, bootstrap, currentQuestion, debugCode, email, history, name, phone, questionShownAtIso, stage, typing, verifiedOkAtIso]);
 
   useEffect(() => {
     if (stage === "collect_intro") {
-      const t = setTimeout(() => setStage("collect_name"), 250);
+      const t = setTimeout(() => setStage("eligibility"), 250);
       return () => clearTimeout(t);
     }
   }, [stage]);
+
+  function answerEligibility(v: "yes" | "no") {
+    setEligibility(v);
+    setError(null);
+    if (v === "yes") {
+      setStage("collect_name");
+      return;
+    }
+    setStage("eligibility_no");
+  }
+
+  function retryEligibility() {
+    setError(null);
+    setEligibility(null);
+    setStage("eligibility");
+  }
 
   useEffect(() => {
     requestAnimationFrame(() => scrollToBottom("smooth"));
@@ -390,7 +496,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
     }
 
     setVerifiedOkAtIso(new Date().toISOString());
-    setStage("collect_phone");
+    setStage("post_verify");
   }
 
   async function submitPhone() {
@@ -696,6 +802,35 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
           ) : null}
 
           <div className="shrink-0 border-t border-zinc-200 bg-white/90 p-3 backdrop-blur">
+            {stage === 'eligibility' ? (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => answerEligibility('yes')}
+                  className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 text-white transition-all hover:bg-emerald-700"
+                >
+                  כן
+                </button>
+                <button
+                  type="button"
+                  onClick={() => answerEligibility('no')}
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-zinc-300 bg-white"
+                >
+                  לא
+                </button>
+              </div>
+            ) : null}
+
+            {stage === 'eligibility_no' ? (
+              <button
+                type="button"
+                onClick={retryEligibility}
+                className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-emerald-600 px-4 text-white transition-all hover:bg-emerald-700"
+              >
+                נסה שוב
+              </button>
+            ) : null}
+
             {stage === 'collect_name' ? (
               <div className="flex flex-col gap-2">
                 <input

@@ -30,6 +30,8 @@ const updateSchema = z.object({
     .object({
       introTitle: z.string(),
       introSubtitle: z.string(),
+      eligibilityQuestion: z.string().optional(),
+      eligibilityNoMessage: z.string().optional(),
       askName: z.string(),
       askEmail: z.string(),
       askPhone: z.string(),

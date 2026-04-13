@@ -1,4 +1,5 @@
 import FormChatClient from "./client";
+import { getFormBootstrap } from "@/lib/data";
 
 export default async function FormChatPage({
   params,
@@ -6,5 +7,6 @@ export default async function FormChatPage({
   params: Promise<{ formId: string }>;
 }) {
   const { formId } = await params;
-  return <FormChatClient formSlug={formId} />;
+  const bootstrap = await getFormBootstrap(formId);
+  return <FormChatClient formSlug={formId} initialBootstrap={bootstrap} />;
 }
