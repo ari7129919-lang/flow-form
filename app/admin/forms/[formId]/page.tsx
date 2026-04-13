@@ -24,6 +24,7 @@ type FormPayload = {
       introSubtitle: string;
       eligibilityQuestion?: string;
       eligibilityNoMessage?: string;
+      finalChatMessage?: string;
       askName: string;
       askEmail: string;
       askPhone: string;
@@ -438,6 +439,21 @@ export default function AdminFormEditPage() {
                   disabled={saving}
                   rows={3}
                   className="min-h-24 resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none focus:border-emerald-500 disabled:opacity-60"
+                />
+
+                <label className="text-xs text-zinc-500">הודעה אחרונה בצ׳אט (ללקוח)</label>
+                <textarea
+                  value={data.form.chatCopy?.finalChatMessage ?? ""}
+                  onChange={(e) =>
+                    setData({
+                      ...data,
+                      form: { ...data.form, chatCopy: { ...(data.form.chatCopy as any), finalChatMessage: e.target.value } },
+                    })
+                  }
+                  onBlur={() => saveFormPatch({ chatCopy: data.form.chatCopy })}
+                  disabled={saving}
+                  rows={2}
+                  className="min-h-20 resize-none rounded-xl border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none focus:border-emerald-500 disabled:opacity-60"
                 />
 
                 <label className="text-xs text-zinc-500">שאלה: שם</label>

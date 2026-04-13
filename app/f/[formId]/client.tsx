@@ -38,6 +38,7 @@ type Bootstrap = {
       introSubtitle: string;
       eligibilityQuestion?: string;
       eligibilityNoMessage?: string;
+      finalChatMessage?: string;
       askName: string;
       askEmail: string;
       askPhone: string;
@@ -90,6 +91,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
     | "collect_email"
     | "collect_phone"
     | "post_verify"
+    | "final_chat"
     | "sending"
     | "await_code"
     | "verifying"
@@ -157,6 +159,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
       introSubtitle: "כדי להתחיל נבקש כמה פרטים ואז נשלח קוד אימות למייל.",
       eligibilityQuestion: "רוצה לבדוק זכאות?",
       eligibilityNoMessage: "אוקי. אם תרצה/י לבדוק זכאות בהמשך, אפשר לחזור לכאן.",
+      finalChatMessage: "יופי, מעולה — סיימנו ✅",
       askName: "מה שמך?",
       askEmail: "מה המייל שנשלח אליו קוד אימות?",
       askPhone: "מה מספר הטלפון שלך?",
@@ -225,7 +228,15 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
     if (stage !== "post_verify") return;
     const t = setTimeout(() => {
       setStage("collect_phone");
-    }, 650);
+    }, 1800);
+    return () => clearTimeout(t);
+  }, [stage]);
+
+  useEffect(() => {
+    if (stage !== "final_chat") return;
+    const t = setTimeout(() => {
+      setStage("done");
+    }, 2600);
     return () => clearTimeout(t);
   }, [stage]);
 
@@ -328,6 +339,17 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
     if (stage === "collect_email") {
       base.push({ id: "p_email", from: "bot", text: chatCopy.askEmail, atIso: getMsgTime("p_email") });
     }
+
+    if (verifiedOkAtIso && (stage === "collect_phone" || stage === "loading_form")) {
+      base.push({
+        id: "otp_verified_ok",
+        from: "bot",
+        text: "המייל אומת בהצלחה ✅",
+        subtle: true,
+        atIso: verifiedOkAtIso,
+      });
+    }
+
     if (stage === "collect_phone") {
       base.push({ id: "p_phone", from: "bot", text: chatCopy.askPhone, atIso: getMsgTime("p_phone") });
     }
@@ -336,7 +358,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
       base.push({
         id: "otp_sending",
         from: "bot",
-        text: "מעולה — שולח/ת עכשיו קוד אימות למייל שלך...",
+        text: "מעולה — נשלח עכשיו קוד אימות למייל שלך...",
         subtle: true,
         atIso: getMsgTime("otp_sending"),
       });
@@ -359,6 +381,26 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
           atIso: getMsgTime("dbg"),
         });
       }
+    }
+
+    if (stage === "final_chat" && bootstrap) {
+      for (const h of history) {
+        base.push({ id: `hq_${h.questionId}`, from: "bot", text: h.questionText, atIso: h.atIso });
+        base.push({ id: `ha_${h.questionId}`, from: "user", text: h.answerText, atIso: h.atIso });
+      }
+
+      const finalMsg = (chatCopy as unknown as { finalChatMessage?: unknown }).finalChatMessage;
+      base.push({
+        id: "final_chat_msg",
+        from: "bot",
+        text:
+          typeof finalMsg === "string" && finalMsg.trim().length > 0
+            ? finalMsg
+            : "יופי, מעולה — סיימנו ✅",
+        subtle: true,
+        atIso: getMsgTime("final_chat_msg"),
+      });
+      return base;
     }
 
     if (stage === "question" && bootstrap && currentQuestion) {
@@ -607,12 +649,12 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
         setPendingOtherText('');
         requestAnimationFrame(() => scrollToBottom('smooth'));
         if (qIndex + 1 >= bootstrap.questions.length) {
+          setStage('final_chat');
           await fetch('/api/form/complete', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ sessionId }),
           });
-          setStage('done');
         } else {
           setQIndex((v) => v + 1);
         }
@@ -663,12 +705,12 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
       setPendingOtherText('');
 
       if (qIndex + 1 >= bootstrap.questions.length) {
+        setStage('final_chat');
         await fetch('/api/form/complete', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ sessionId }),
         });
-        setStage('done');
       } else {
         setQIndex((v) => v + 1);
       }
@@ -952,7 +994,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                 </button>
 
                 <div className="text-center text-xs text-zinc-500">
-                  טעית במייל/טלפון? לחץ על {"\"עריכת פרטים\""} כדי לחזור ולתקן.
+                  טעית במייל? לחץ על {"\"עריכת פרטים\""} כדי לחזור ולתקן.
                 </div>
               </div>
             ) : null}

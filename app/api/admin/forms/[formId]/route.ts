@@ -32,6 +32,7 @@ const updateSchema = z.object({
       introSubtitle: z.string(),
       eligibilityQuestion: z.string().optional(),
       eligibilityNoMessage: z.string().optional(),
+      finalChatMessage: z.string().optional(),
       askName: z.string(),
       askEmail: z.string(),
       askPhone: z.string(),
