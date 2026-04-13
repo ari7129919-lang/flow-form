@@ -89,6 +89,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
   >("collect_intro");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [code, setCode] = useState("");
@@ -241,7 +242,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
       });
     }
 
-    if (stage === "await_code" || stage === "verifying" || stage === "loading_form") {
+    if (stage === "await_code" || stage === "verifying") {
       base.push({
         id: "b3",
         from: "bot",
@@ -260,16 +261,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
       }
     }
 
-    if (stage === "await_code" || stage === "verifying" || stage === "loading_form") {
-      base.push({
-        id: "otp_title",
-        from: "bot",
-        text: "קוד אימות נשלח למייל שלך — הזן אותו כדי להמשיך",
-        atIso: new Date().toISOString(),
-      });
-    }
-
-    if (verifiedOkAtIso && (stage === "loading_form" || stage === "question")) {
+    if (verifiedOkAtIso && stage === "collect_phone") {
       base.push({
         id: "otp_verified_ok",
         from: "bot",
@@ -290,7 +282,8 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
         return base;
       }
 
-      const nudges = Array.isArray((bootstrap.form as any).nudges) ? (bootstrap.form as any).nudges : [];
+      const nudgesRaw = (bootstrap.form as unknown as { nudges?: unknown }).nudges;
+      const nudges = Array.isArray(nudgesRaw) ? nudgesRaw : [];
       for (const n of nudges) {
         if (!n || typeof n !== "object") continue;
         if (Number(n.atQuestionOrder) === Number(currentQuestion.order) && String(n.text ?? "").trim().length > 0) {
@@ -341,14 +334,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
 
   async function startOtp() {
     setError(null);
-
-    const digits = digitsOnly(phone);
-    if (digits.length < 9) {
-      setPhoneError("מספר טלפון חייב להכיל לפחות 9 ספרות");
-      return;
-    }
-
-    setPhoneError(null);
+    setEmailError(null);
 
     setStage("sending");
 
@@ -360,7 +346,6 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
       body: JSON.stringify({
         formSlug,
         name: name.trim() || undefined,
-        phone: phone.trim(),
         email: cleanEmail,
       }),
     });
@@ -369,12 +354,14 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
       const data = (await res.json().catch(() => null)) as
         | { error?: unknown; details?: { fieldErrors?: Record<string, string[]> } }
         | null;
+      const emailMsg = data?.details?.fieldErrors?.email?.[0];
+      if (emailMsg) setEmailError(emailMsg);
       const phoneMsg = data?.details?.fieldErrors?.phone?.[0];
       if (phoneMsg) setPhoneError(phoneMsg);
 
       const errMsg = typeof data?.error === "string" && data.error.trim().length > 0 ? data.error : null;
       setError(errMsg ?? `שגיאה בשליחת קוד (${res.status})`);
-      setStage("collect_phone");
+      setStage("collect_email");
       return;
     }
 
@@ -402,13 +389,46 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
       return;
     }
 
-    setStage("loading_form");
     setVerifiedOkAtIso(new Date().toISOString());
+    setStage("collect_phone");
+  }
+
+  async function submitPhone() {
+    if (!sessionId) return;
+    setError(null);
+
+    const digits = digitsOnly(phone);
+    if (digits.length < 9) {
+      setPhoneError("מספר טלפון חייב להכיל לפחות 9 ספרות");
+      return;
+    }
+
+    setPhoneError(null);
+    setStage("loading_form");
+
+    const phoneRes = await fetch("/api/form/phone", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId, phone: phone.trim() }),
+    });
+
+    if (!phoneRes.ok) {
+      const data = (await phoneRes.json().catch(() => null)) as
+        | { error?: unknown; details?: { fieldErrors?: Record<string, string[]> } }
+        | null;
+      const phoneMsg = data?.details?.fieldErrors?.phone?.[0];
+      if (phoneMsg) setPhoneError(phoneMsg);
+      const errMsg = typeof data?.error === "string" && data.error.trim().length > 0 ? data.error : null;
+      setError(errMsg ?? `שגיאה בשמירת טלפון (${phoneRes.status})`);
+      setStage("collect_phone");
+      return;
+    }
+
     try {
       const bootRes = await fetch(`/api/form/bootstrap?formSlug=${encodeURIComponent(formSlug)}`);
       if (!bootRes.ok) {
         setError("לא הצלחתי לטעון שאלות");
-        setStage("await_code");
+        setStage("collect_phone");
         return;
       }
       const boot = (await bootRes.json()) as Bootstrap;
@@ -422,7 +442,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
       setStage("question");
     } catch {
       setError("לא הצלחתי לטעון שאלות");
-      setStage("await_code");
+      setStage("collect_phone");
     }
   }
 
@@ -440,6 +460,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
     setQuestionShownAtIso(null);
     setTyping(false);
     setBotStatus("מאובטח");
+    setEmailError(null);
     setStage("collect_name");
   }
 
@@ -702,29 +723,34 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
               <div className="flex flex-col gap-2">
                 <input
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailError(null);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key !== "Enter") return;
                     e.preventDefault();
                     if (normalizeEmail(email).length === 0) return;
-                    setStage("collect_phone");
+                    startOtp();
                   }}
                   placeholder="מייל"
                   className="h-11 rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-emerald-500"
                   inputMode="email"
                 />
+
+                {emailError ? <div className="text-sm text-red-600">{emailError}</div> : null}
                 <button
                   type="button"
-                  onClick={() => setStage('collect_phone')}
+                  onClick={startOtp}
                   disabled={normalizeEmail(email).length === 0}
                   className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
                 >
-                  המשך
+                  שלח קוד אימות
                 </button>
               </div>
             ) : null}
 
-            {stage === 'collect_phone' || stage === 'sending' ? (
+            {stage === 'collect_phone' || stage === 'loading_form' ? (
               <div className="flex flex-col gap-2">
                 <input
                   value={phone}
@@ -734,11 +760,10 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
                     e.preventDefault();
                     const disabled =
                       saving ||
-                      stage === "sending" ||
-                      normalizeEmail(email).length === 0 ||
+                      stage === "loading_form" ||
                       digitsOnly(phone).length < 9;
                     if (disabled) return;
-                    startOtp();
+                    submitPhone();
                   }}
                   placeholder="טלפון"
                   className="h-11 rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-emerald-500"
@@ -748,17 +773,17 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
                 {phoneError ? <div className="text-sm text-red-600">{phoneError}</div> : null}
 
                 <button
-                  onClick={startOtp}
-                  disabled={saving || stage === 'sending' || normalizeEmail(email).length === 0 || digitsOnly(phone).length < 9}
+                  onClick={submitPhone}
+                  disabled={saving || stage === 'loading_form' || digitsOnly(phone).length < 9}
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
                 >
                   <Send className="size-4" />
-                  {stage === 'sending' ? 'שולח...' : 'שלח קוד אימות'}
+                  {stage === 'loading_form' ? 'שומר...' : 'המשך'}
                 </button>
               </div>
             ) : null}
 
-            {stage === 'await_code' || stage === 'verifying' || stage === 'loading_form' ? (
+            {stage === 'await_code' || stage === 'verifying' ? (
               <div className="flex flex-col gap-2">
                 <input
                   value={code}
@@ -781,7 +806,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50"
                 >
                   <Check className="size-4" />
-                  {stage === "verifying" || stage === "loading_form" ? "מאמת..." : "אמת קוד"}
+                  {stage === "verifying" ? "מאמת..." : "אמת קוד"}
                 </button>
 
                 <button
@@ -792,7 +817,7 @@ export default function FormChatClient({ formSlug }: { formSlug: string }) {
                 </button>
 
                 <div className="text-center text-xs text-zinc-500">
-                  טעית במייל/טלפון? לחץ על "עריכת פרטים" כדי לחזור ולתקן.
+                  טעית במייל/טלפון? לחץ על {"\"עריכת פרטים\""} כדי לחזור ולתקן.
                 </div>
               </div>
             ) : null}

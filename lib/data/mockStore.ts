@@ -172,6 +172,12 @@ export const mockStore = {
   getSession(sessionId: string) {
     return sessions.find((s) => s.id === sessionId) ?? null;
   },
+  setSessionPhone(sessionId: string, phone: string) {
+    const s = sessions.find((x) => x.id === sessionId);
+    if (!s) return null;
+    s.phone = phone;
+    return s;
+  },
   verifySession(sessionId: string) {
     const s = sessions.find((x) => x.id === sessionId);
     if (!s) return null;

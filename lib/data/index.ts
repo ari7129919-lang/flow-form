@@ -934,6 +934,28 @@ export async function addOtpFailedEvent(sessionId: string) {
   await supabase.from("ff_events").insert({ session_id: sessionId, type: "otp_failed" });
 }
 
+export async function updateSessionPhone(args: { sessionId: string; phone: string }) {
+  const env = getServerEnv();
+  if (env.USE_MOCK_DATA) {
+    const s = mockStore.setSessionPhone(args.sessionId, args.phone);
+    if (!s) return;
+    mockStore.addEvent({ sessionId: s.id, type: "phone_updated", meta: { phone: args.phone } });
+    return;
+  }
+
+  const supabase = getSupabaseServerClient();
+  await supabase
+    .from("ff_sessions")
+    .update({ phone: args.phone })
+    .eq("id", args.sessionId);
+
+  await supabase.from("ff_events").insert({
+    session_id: args.sessionId,
+    type: "phone_updated",
+    meta: { phone: args.phone },
+  });
+}
+
 export type ReportsOverview = {
   funnel: {
     started: number;

@@ -27,7 +27,8 @@ const bodySchema = z.object({
       if (digits.length < 9) {
         ctx.addIssue({ code: "custom", message: "מספר טלפון חייב להכיל לפחות 9 ספרות" });
       }
-    }),
+    })
+    .optional(),
   email: z.preprocess(
     (v) => {
       if (typeof v !== "string") return v;
@@ -37,7 +38,7 @@ const bodySchema = z.object({
         .toLowerCase();
       return cleaned;
     },
-    z.string().email(),
+    z.string().email("כתובת מייל לא תקינה"),
   ),
 });
 
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
     const details = parsed.error.flatten();
     return NextResponse.json(
       {
-        error: "בקשה לא תקינה",
+        error: "יש שדה אחד או יותר לא תקין",
         details: {
           fieldErrors: details.fieldErrors,
           formErrors: details.formErrors,
@@ -81,7 +82,7 @@ export async function POST(req: Request) {
       formId: form.id,
       name: parsed.data.name ?? null,
       email: parsed.data.email,
-      phone: parsed.data.phone,
+      phone: parsed.data.phone ?? null,
       otpHash,
       otpExpiresAtIso: expiresAt.toISOString(),
     });
