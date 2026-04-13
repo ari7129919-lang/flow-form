@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import {
   Check,
   ChevronLeft,
   LockKeyhole,
-  MessageCircle,
   Send,
   ShieldCheck,
 } from "lucide-react";
@@ -70,7 +70,7 @@ function fmtTime(iso?: string) {
 
 function bubbleClass(from: Msg["from"]) {
   if (from === "user") {
-    return "bg-emerald-600 text-white rounded-2xl rounded-br-md";
+    return "bg-zinc-200 text-zinc-900 rounded-2xl rounded-br-md border border-zinc-300";
   }
   return "bg-white text-zinc-900 rounded-2xl rounded-bl-md border border-zinc-200";
 }
@@ -725,11 +725,11 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
     const title = bootstrap?.form.completionTitle || 'תודה! הטופס התקבל';
     const subtitle = bootstrap?.form.completionSubtitle || 'אפשר לסגור את החלון.';
     return (
-      <div className="fixed inset-0 overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50 via-zinc-50 to-zinc-100">
+      <div className="fixed inset-0 overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-100 via-zinc-50 to-zinc-200">
         <div className="mx-auto flex h-full w-full max-w-md flex-col p-3 sm:max-w-lg md:max-w-xl">
           <div className="flex min-h-0 flex-1 items-center justify-center">
             <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 text-center shadow-sm">
-              <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
+              <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-zinc-100 text-zinc-800">
                 <Check className="size-6" />
               </div>
               <div className="mt-4 whitespace-pre-wrap text-lg font-semibold text-zinc-900">{title}</div>
@@ -742,38 +742,38 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50 via-zinc-50 to-zinc-100">
+    <div className="fixed inset-0 overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-100 via-zinc-50 to-zinc-200">
       <div className="mx-auto flex h-full w-full max-w-md flex-col p-3 sm:max-w-lg md:max-w-xl">
-        <div className="flex shrink-0 items-center justify-between rounded-2xl border border-zinc-200 bg-white/85 px-4 py-3 shadow-sm backdrop-blur">
+        <div className="flex shrink-0 items-center justify-between rounded-2xl border border-zinc-500/40 bg-zinc-700/80 px-4 py-4 text-zinc-50 shadow-sm backdrop-blur">
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="grid size-9 place-items-center rounded-xl hover:bg-zinc-100"
+              className="grid size-9 place-items-center rounded-xl text-zinc-50 hover:bg-white/15"
               onClick={() => window.history.back()}
               aria-label="חזרה"
             >
               <ChevronLeft className="size-5" />
             </button>
-            <div className="grid size-9 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
-              <MessageCircle className="size-5" />
+            <div className="grid size-10 place-items-center overflow-hidden rounded-xl bg-white/15">
+              <Image src="/profile.png" alt="" width={40} height={40} className="size-10 object-cover" />
             </div>
             <div className="flex flex-col leading-tight">
-              <div className="text-base font-semibold text-zinc-900 md:text-lg">{bootstrap?.form.name ?? "שאלון"}</div>
-              <div className="text-xs text-zinc-500">
-                {stage === "question" && currentQuestion ? `שאלה ${currentQuestion.order} מתוך ${totalQuestions}` : formSlug}
+              <div className="text-base font-semibold text-zinc-50 md:text-lg">{bootstrap?.form.name ?? "שאלון"}</div>
+              <div className="text-xs text-zinc-100/90">
+                {stage === "question" && currentQuestion ? `שאלה ${currentQuestion.order} מתוך ${totalQuestions}` : ""}
               </div>
             </div>
           </div>
 
           {stage === 'question' && totalQuestions > 0 ? (
             <div className="flex items-center gap-2">
-              <div className="hidden text-xs text-zinc-600 sm:block">
+              <div className="hidden text-xs text-zinc-100/90 sm:block">
                 {currentQuestion?.order ?? qIndex + 1}/{totalQuestions}
               </div>
-              <div className="h-2 w-24 overflow-hidden rounded-full bg-zinc-100">
+              <div className="h-2 w-24 overflow-hidden rounded-full bg-white/25">
                 <div
                   className={
-                    "h-full rounded-full bg-emerald-500 transition-all duration-500 ease-out " +
+                    "h-full rounded-full bg-zinc-100 transition-all duration-500 ease-out " +
                     (progressPulse ? "brightness-110" : "")
                   }
                   style={{ width: `${progressPct}%` }}
@@ -781,14 +781,14 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-1 rounded-xl bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
+            <div className="flex items-center gap-1 rounded-xl bg-white/15 px-2 py-1 text-xs text-zinc-50">
               <LockKeyhole className="size-4" />
               אימות
             </div>
           )}
         </div>
 
-        <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.85),rgba(255,255,255,0.85)),url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22 viewBox=%220 0 50 50%22%3E%3Cg fill=%22%23d1fae5%22 fill-opacity=%220.35%22%3E%3Cpath d=%22M25 0l3 6-3 6-3-6 3-6zm0 25l3 6-3 6-3-6 3-6zm0 25l3-6-3-6-3 6 3 6z%22/%3E%3C/g%3E%3C/svg%3E'))] shadow-sm">
+        <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.90),rgba(255,255,255,0.90)),url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22 viewBox=%220 0 50 50%22%3E%3Cg fill=%22%23d4d4d8%22 fill-opacity=%220.35%22%3E%3Cpath d=%22M25 0l3 6-3 6-3-6 3-6zm0 25l3 6-3 6-3-6 3-6zm0 25l3-6-3-6-3 6 3 6z%22/%3E%3C/g%3E%3C/svg%3E'))] shadow-sm">
           <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
             <div className="mx-auto flex max-w-md flex-col gap-2">
               {messages.map((m) => (
@@ -798,8 +798,8 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                 >
                   {m.from === 'bot' ? (
                     <div className="flex max-w-[90%] items-end gap-2">
-                      <div className="grid size-8 shrink-0 place-items-center rounded-full bg-emerald-600 text-xs font-semibold text-white">
-                        FF
+                      <div className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-zinc-200">
+                        <Image src="/bot-avatar.png" alt="" width={32} height={32} className="size-8 object-cover" />
                       </div>
                       <div
                         className={
@@ -829,7 +829,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                       }
                     >
                       <span className="whitespace-pre-wrap break-words">{m.text}</span>
-                      <div className="mt-1 text-left text-[10px] text-emerald-100/90">{fmtTime(m.atIso)}</div>
+                      <div className="mt-1 text-left text-[10px] text-zinc-500">{fmtTime(m.atIso)}</div>
                     </div>
                   )}
                 </div>
@@ -849,14 +849,14 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                 <button
                   type="button"
                   onClick={() => answerEligibility('yes')}
-                  className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 text-white transition-all hover:bg-emerald-700"
+                  className="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-100 px-4 text-zinc-900 transition-all hover:bg-white active:scale-[0.99] active:bg-zinc-200"
                 >
                   כן
                 </button>
                 <button
                   type="button"
                   onClick={() => answerEligibility('no')}
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-zinc-300 bg-white"
+                  className="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-800 px-4 text-white transition-all hover:bg-zinc-900 active:scale-[0.99]"
                 >
                   לא
                 </button>
@@ -867,7 +867,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
               <button
                 type="button"
                 onClick={retryEligibility}
-                className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-emerald-600 px-4 text-white transition-all hover:bg-emerald-700"
+                className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-zinc-800 px-4 text-white transition-all hover:bg-zinc-900"
               >
                 נסה שוב
               </button>
@@ -884,12 +884,12 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                     setStage("collect_email");
                   }}
                   placeholder="הקלד/י שם"
-                  className="h-11 rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-emerald-500"
+                  className="h-11 rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-zinc-700"
                 />
                 <button
                   type="button"
                   onClick={() => setStage('collect_email')}
-                  className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 text-white transition-all hover:bg-emerald-700"
+                  className="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-800 px-4 text-white transition-all hover:bg-zinc-900"
                 >
                   המשך
                 </button>
@@ -911,7 +911,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                     startOtp();
                   }}
                   placeholder="מייל"
-                  className="h-11 rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-emerald-500"
+                  className="h-11 rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-zinc-700"
                   inputMode="email"
                 />
 
@@ -920,7 +920,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                   type="button"
                   onClick={startOtp}
                   disabled={normalizeEmail(email).length === 0}
-                  className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
+                  className="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-800 px-4 text-white transition-all hover:bg-zinc-900 disabled:opacity-50"
                 >
                   שלח קוד אימות
                 </button>
@@ -943,7 +943,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                     submitPhone();
                   }}
                   placeholder="טלפון"
-                  className="h-11 rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-emerald-500"
+                  className="h-11 rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-zinc-700"
                   inputMode="tel"
                 />
 
@@ -952,7 +952,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                 <button
                   onClick={submitPhone}
                   disabled={saving || stage === 'loading_form' || digitsOnly(phone).length < 9}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-zinc-800 px-4 text-white transition-all hover:bg-zinc-900 disabled:opacity-50"
                 >
                   <Send className="size-4" />
                   {stage === 'loading_form' ? 'שומר...' : 'המשך'}
@@ -973,7 +973,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                     verifyOtp();
                   }}
                   placeholder="קוד בן 6 ספרות"
-                  className="h-11 rounded-xl border border-zinc-300 bg-white px-3 text-left tracking-widest outline-none focus:border-emerald-500"
+                  className="h-11 rounded-xl border border-zinc-300 bg-white px-3 text-left tracking-widest outline-none focus:border-zinc-700"
                   inputMode="numeric"
                 />
 
@@ -1006,7 +1006,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                     type="button"
                     onClick={() => submitAnswer("yes")}
                     disabled={saving}
-                    className="h-11 rounded-xl bg-emerald-600 text-sm font-medium text-white disabled:opacity-50"
+                    className="h-11 rounded-xl bg-zinc-100 text-sm font-medium text-zinc-900 transition-all hover:bg-white active:scale-[0.99] active:bg-zinc-200 disabled:opacity-50"
                   >
                     כן
                   </button>
@@ -1014,7 +1014,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                     type="button"
                     onClick={() => submitAnswer("no")}
                     disabled={saving}
-                    className="h-11 rounded-xl bg-zinc-900 text-sm font-medium text-white disabled:opacity-50"
+                    className="h-11 rounded-xl bg-zinc-800 text-sm font-medium text-white transition-all hover:bg-zinc-900 active:scale-[0.99] disabled:opacity-50"
                   >
                     לא
                   </button>
@@ -1025,8 +1025,8 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                     className={
                       "h-11 rounded-xl border text-sm font-medium disabled:opacity-50 " +
                       (pendingValue === "other"
-                        ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-                        : "border-zinc-300 bg-white")
+                        ? "border-zinc-700 bg-zinc-100 text-zinc-900"
+                        : "border-zinc-300 bg-white hover:bg-zinc-50 active:scale-[0.99]")
                     }
                   >
                     אחר
@@ -1045,13 +1045,13 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                         submitOther();
                       }}
                       placeholder="כתוב כאן..."
-                      className="h-11 flex-1 rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-emerald-500"
+                      className="h-11 flex-1 rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-zinc-700"
                     />
                     <button
                       type="button"
                       onClick={submitOther}
                       disabled={saving}
-                      className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 text-white disabled:opacity-50"
+                      className="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-800 px-4 text-white disabled:opacity-50"
                       aria-label="שליחה"
                     >
                       <Send className="size-4" />
