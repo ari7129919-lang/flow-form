@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import {
   BarChart3,
   FileText,
@@ -42,6 +43,19 @@ function NavItem({
 }
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const [pageLoading, setPageLoading] = useState(false);
+
+  useEffect(() => {
+    // Show loading when pathname changes
+    setPageLoading(true);
+    const timer = setTimeout(() => {
+      setPageLoading(false);
+    }, 600);
+    
+    return () => clearTimeout(timer);
+  }, [pathname]);
+
   return (
     <div className="min-h-[100dvh] bg-[radial-gradient(1000px_circle_at_20%_0%,rgba(176,141,87,0.10),transparent_60%),linear-gradient(180deg,#fbf8f2,#f3f4f6)]">
       <div className="mx-auto flex w-full max-w-7xl gap-4 px-4 py-4">
@@ -105,9 +119,62 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             </div>
           </div>
 
-          <div>{children}</div>
+          {/* Page Loading Overlay */}
+          <div className="relative">
+            {pageLoading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/95 backdrop-blur-sm">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="bronze-pulse"></div>
+                  <div className="text-sm text-zinc-600">טוען...</div>
+                </div>
+              </div>
+            )}
+
+            <div className={pageLoading ? "opacity-20" : ""}>
+              {children}
+            </div>
+          </div>
         </main>
       </div>
+
+      {/* Bronze Pulse CSS */}
+      <style jsx>{`
+        .bronze-pulse {
+          width: 20px;
+          height: 20px;
+          background-color: #cd7f32; /* גוון ברונזה בסיסי */
+          /* גרדיאנט למראה מטאלי יוקרתי */
+          background: radial-gradient(circle, #edb069 0%, #cd7f32 100%);
+          border-radius: 50%;
+          position: relative;
+          margin: 20px auto;
+        }
+
+        .bronze-pulse::after {
+          content: "";
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(205, 127, 50, 0.6); /* ברונזה עם שקיפות */
+          border-radius: 50%;
+          transform: translate(-50%, -50%);
+          /* הפעלת האנימציה */
+          animation: luxury-pulse 2s infinite ease-out;
+        }
+
+        @keyframes luxury-pulse {
+          0% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 0.8;
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(2.5);
+            opacity: 0;
+          }
+        }
+      `}</style>
     </div>
   );
 }
