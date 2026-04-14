@@ -111,6 +111,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [verifiedOkAtIso, setVerifiedOkAtIso] = useState<string | null>(null);
   const [bootstrap, setBootstrap] = useState<Bootstrap | null>(initialBootstrap ?? null);
+  const [avatarPulse, setAvatarPulse] = useState(true);
   const [qIndex, setQIndex] = useState(0);
   const [history, setHistory] = useState<
     Array<{
@@ -137,6 +138,11 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
     msgTimesRef.current.set(id, iso);
     return iso;
   };
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setAvatarPulse(false), 2400);
+    return () => window.clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (initialBootstrap) return;
@@ -725,7 +731,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
     const title = bootstrap?.form.completionTitle || 'תודה! הטופס התקבל';
     const subtitle = bootstrap?.form.completionSubtitle || 'אפשר לסגור את החלון.';
     return (
-      <div className="fixed inset-0 overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-100 via-zinc-50 to-zinc-200">
+      <div className="fixed inset-0 overflow-hidden bg-[radial-gradient(1000px_circle_at_20%_0%,rgba(176,141,87,0.14),transparent_60%),radial-gradient(900px_circle_at_85%_10%,rgba(255,255,255,0.75),transparent_55%),linear-gradient(180deg,#fbf8f2,#f3f4f6)]">
         <div className="mx-auto flex h-full w-full max-w-md flex-col p-3 sm:max-w-lg md:max-w-xl">
           <div className="flex min-h-0 flex-1 items-center justify-center">
             <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 text-center shadow-sm">
@@ -742,24 +748,38 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-100 via-zinc-50 to-zinc-200">
+    <div className="fixed inset-0 overflow-hidden bg-[radial-gradient(1000px_circle_at_20%_0%,rgba(176,141,87,0.14),transparent_60%),radial-gradient(900px_circle_at_85%_10%,rgba(255,255,255,0.75),transparent_55%),linear-gradient(180deg,#fbf8f2,#f3f4f6)]">
       <div className="mx-auto flex h-full w-full max-w-md flex-col p-3 sm:max-w-lg md:max-w-xl">
-        <div className="flex shrink-0 items-center justify-between rounded-2xl border border-zinc-500/40 bg-zinc-700/80 px-4 py-4 text-zinc-50 shadow-sm backdrop-blur">
+        <div className="flex shrink-0 items-center justify-between rounded-2xl border border-zinc-200 bg-[#f6f1e6]/90 px-4 py-4 text-zinc-900 shadow-sm backdrop-blur">
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="grid size-9 place-items-center rounded-xl text-zinc-50 hover:bg-white/15"
+              className="grid size-9 place-items-center rounded-xl text-zinc-700 hover:bg-zinc-100"
               onClick={() => window.history.back()}
               aria-label="חזרה"
             >
               <ChevronLeft className="size-5" />
             </button>
-            <div className="grid size-10 place-items-center overflow-hidden rounded-xl bg-white/15">
-              <Image src="/profile.png" alt="" width={40} height={40} className="size-10 object-cover" />
+            <div
+              className={
+                "relative grid size-14 place-items-center overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-zinc-200 " +
+                "ring-offset-2 ring-offset-[#f6f1e6]/60 " +
+                "origin-left cursor-zoom-in transition-transform duration-300 ease-out will-change-transform hover:scale-[2] hover:translate-x-1 hover:z-30 " +
+                (avatarPulse ? "animate-pulse ring-[#b08d57]/35 shadow-[0_10px_30px_rgba(176,141,87,0.18)]" : "")
+              }
+            >
+              <Image
+                src="/profile-v4.png"
+                alt=""
+                width={100} // הגדלנו את הרוחב כדי שיתאים למלבן
+               height={58}
+               quality={100}
+               className="w-24 h-14 object-cover rounded-md"
+              />
             </div>
             <div className="flex flex-col leading-tight">
-              <div className="text-base font-semibold text-zinc-50 md:text-lg">{bootstrap?.form.name ?? "שאלון"}</div>
-              <div className="text-xs text-zinc-100/90">
+              <div className="text-base font-semibold text-zinc-900 md:text-lg">{bootstrap?.form.name ?? "שאלון"}</div>
+              <div className="text-xs text-zinc-600">
                 {stage === "question" && currentQuestion ? `שאלה ${currentQuestion.order} מתוך ${totalQuestions}` : ""}
               </div>
             </div>
@@ -767,13 +787,13 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
 
           {stage === 'question' && totalQuestions > 0 ? (
             <div className="flex items-center gap-2">
-              <div className="hidden text-xs text-zinc-100/90 sm:block">
+              <div className="hidden text-xs text-zinc-600 sm:block">
                 {currentQuestion?.order ?? qIndex + 1}/{totalQuestions}
               </div>
-              <div className="h-2 w-24 overflow-hidden rounded-full bg-white/25">
+              <div className="h-2 w-24 overflow-hidden rounded-full bg-zinc-200">
                 <div
                   className={
-                    "h-full rounded-full bg-zinc-100 transition-all duration-500 ease-out " +
+                    "h-full rounded-full bg-[#b08d57] transition-all duration-500 ease-out " +
                     (progressPulse ? "brightness-110" : "")
                   }
                   style={{ width: `${progressPct}%` }}
@@ -781,7 +801,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-1 rounded-xl bg-white/15 px-2 py-1 text-xs text-zinc-50">
+            <div className="flex items-center gap-1 rounded-xl bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
               <LockKeyhole className="size-4" />
               אימות
             </div>
@@ -799,7 +819,14 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                   {m.from === 'bot' ? (
                     <div className="flex max-w-[90%] items-end gap-2">
                       <div className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-zinc-200">
-                        <Image src="/bot-avatar.png" alt="" width={32} height={32} className="size-8 object-cover" />
+                        <Image
+                          src="/bot-avatar-v2.jpeg"
+                          alt=""
+                          width={32}
+                          height={32}
+                          quality={75}
+                          className="size-8 object-cover"
+                        />
                       </div>
                       <div
                         className={
@@ -849,14 +876,14 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                 <button
                   type="button"
                   onClick={() => answerEligibility('yes')}
-                  className="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-100 px-4 text-zinc-900 transition-all hover:bg-white active:scale-[0.99] active:bg-zinc-200"
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-100 px-4 text-emerald-950 shadow-sm transition-all hover:bg-emerald-50 hover:ring-2 hover:ring-emerald-200/70 active:scale-[0.99]"
                 >
                   כן
                 </button>
                 <button
                   type="button"
                   onClick={() => answerEligibility('no')}
-                  className="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-800 px-4 text-white transition-all hover:bg-zinc-900 active:scale-[0.99]"
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 text-zinc-900 transition-all hover:bg-zinc-50 active:scale-[0.99]"
                 >
                   לא
                 </button>
@@ -1006,7 +1033,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                     type="button"
                     onClick={() => submitAnswer("yes")}
                     disabled={saving}
-                    className="h-11 rounded-xl bg-zinc-100 text-sm font-medium text-zinc-900 transition-all hover:bg-white active:scale-[0.99] active:bg-zinc-200 disabled:opacity-50"
+                    className="h-11 rounded-xl border border-emerald-200 bg-emerald-100 text-sm font-medium text-emerald-950 shadow-sm transition-all hover:bg-emerald-50 hover:ring-2 hover:ring-emerald-200/70 active:scale-[0.99] disabled:opacity-50"
                   >
                     כן
                   </button>
@@ -1014,7 +1041,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                     type="button"
                     onClick={() => submitAnswer("no")}
                     disabled={saving}
-                    className="h-11 rounded-xl bg-zinc-800 text-sm font-medium text-white transition-all hover:bg-zinc-900 active:scale-[0.99] disabled:opacity-50"
+                    className="h-11 rounded-xl border border-zinc-300 bg-white text-sm font-medium text-zinc-900 transition-all hover:bg-zinc-50 active:scale-[0.99] disabled:opacity-50"
                   >
                     לא
                   </button>
