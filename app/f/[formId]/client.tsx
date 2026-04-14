@@ -773,7 +773,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                 alt=""
                 width={100} 
                height={58}
-               quality={100}
+               quality={75}
                className="w-24 h-14 object-cover rounded-md"
               />
             </div>
