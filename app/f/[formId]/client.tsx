@@ -769,9 +769,9 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
               }
             >
               <Image
-                src="/profile-v4.png"
+                src="/profile-v5.png"
                 alt=""
-                width={100} // הגדלנו את הרוחב כדי שיתאים למלבן
+                width={100} 
                height={58}
                quality={100}
                className="w-24 h-14 object-cover rounded-md"
@@ -894,7 +894,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
               <button
                 type="button"
                 onClick={retryEligibility}
-                className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-zinc-800 px-4 text-white transition-all hover:bg-zinc-900"
+                className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-emerald-200 bg-emerald-100 px-4 text-emerald-950 shadow-sm transition-all hover:bg-emerald-50 hover:ring-2 hover:ring-emerald-200/70 active:scale-[0.99]"
               >
                 נסה שוב
               </button>
@@ -916,7 +916,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                 <button
                   type="button"
                   onClick={() => setStage('collect_email')}
-                  className="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-800 px-4 text-white transition-all hover:bg-zinc-900"
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-100 px-4 text-emerald-950 shadow-sm transition-all hover:bg-emerald-50 hover:ring-2 hover:ring-emerald-200/70 active:scale-[0.99]"
                 >
                   המשך
                 </button>
@@ -947,7 +947,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                   type="button"
                   onClick={startOtp}
                   disabled={normalizeEmail(email).length === 0}
-                  className="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-800 px-4 text-white transition-all hover:bg-zinc-900 disabled:opacity-50"
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-100 px-4 text-emerald-950 shadow-sm transition-all hover:bg-emerald-50 hover:ring-2 hover:ring-emerald-200/70 active:scale-[0.99] disabled:opacity-50"
                 >
                   שלח קוד אימות
                 </button>
@@ -979,7 +979,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                 <button
                   onClick={submitPhone}
                   disabled={saving || stage === 'loading_form' || digitsOnly(phone).length < 9}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-zinc-800 px-4 text-white transition-all hover:bg-zinc-900 disabled:opacity-50"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-100 px-4 text-emerald-950 shadow-sm transition-all hover:bg-emerald-50 hover:ring-2 hover:ring-emerald-200/70 active:scale-[0.99] disabled:opacity-50"
                 >
                   <Send className="size-4" />
                   {stage === 'loading_form' ? 'שומר...' : 'המשך'}
@@ -1007,7 +1007,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                 <button
                   onClick={verifyOtp}
                   disabled={stage !== "await_code" || code.length !== 6}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-100 px-4 text-emerald-950 shadow-sm transition-all hover:bg-emerald-50 hover:ring-2 hover:ring-emerald-200/70 active:scale-[0.99] disabled:opacity-50"
                 >
                   <Check className="size-4" />
                   {stage === "verifying" ? "מאמת..." : "אמת קוד"}
@@ -1078,7 +1078,7 @@ export default function FormChatClient({ formSlug, initialBootstrap }: Props) {
                       type="button"
                       onClick={submitOther}
                       disabled={saving}
-                      className="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-800 px-4 text-white disabled:opacity-50"
+                      className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-100 px-4 text-emerald-950 shadow-sm transition-all hover:bg-emerald-50 hover:ring-2 hover:ring-emerald-200/70 active:scale-[0.99] disabled:opacity-50"
                       aria-label="שליחה"
                     >
                       <Send className="size-4" />

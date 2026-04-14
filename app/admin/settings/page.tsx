@@ -61,18 +61,18 @@ export default function AdminSettingsPage() {
           onChange={(e) => setEmail(e.target.value)}
           disabled={loading || saving}
           placeholder="example@domain.com"
-          className="mt-4 h-11 w-full rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-500 disabled:opacity-60"
+          className="mt-4 h-11 w-full rounded-xl border border-zinc-300 px-3 outline-none focus:border-[#b08d57] disabled:opacity-60"
           inputMode="email"
         />
 
         {error ? <div className="mt-3 text-sm text-red-600">{error}</div> : null}
-        {ok ? <div className="mt-3 text-sm text-emerald-700">נשמר בהצלחה</div> : null}
+        {ok ? <div className="mt-3 text-sm text-[#b08d57]">נשמר בהצלחה</div> : null}
 
         <button
           type="button"
           onClick={save}
           disabled={loading || saving}
-          className="mt-4 h-11 w-full rounded-xl bg-emerald-600 text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
+          className="mt-4 h-11 w-full rounded-xl bg-[#b08d57] text-white transition-all hover:brightness-95 disabled:opacity-50"
         >
           {saving ? "שומר..." : "שמירה"}
         </button>

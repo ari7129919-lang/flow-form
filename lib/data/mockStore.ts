@@ -63,6 +63,18 @@ const events = state.events;
 const answers = state.answers;
 
 export const mockStore = {
+  resetAll() {
+    forms.splice(0, forms.length);
+    questions.splice(0, questions.length);
+    sessions.splice(0, sessions.length);
+    events.splice(0, events.length);
+    answers.splice(0, answers.length);
+  },
+  resetResponsesOnly() {
+    sessions.splice(0, sessions.length);
+    events.splice(0, events.length);
+    answers.splice(0, answers.length);
+  },
   listSessions() {
     return [...sessions];
   },

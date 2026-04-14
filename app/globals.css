@@ -24,3 +24,27 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.ff-pulse-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: #c9a46a;
+  opacity: 0.35;
+  box-shadow: 0 0 0 0 rgba(176, 141, 87, 0);
+  animation: ffPulseDot 1.8s ease-in-out infinite;
+}
+
+@keyframes ffPulseDot {
+  0%,
+  100% {
+    opacity: 0.35;
+    box-shadow: 0 0 0 0 rgba(176, 141, 87, 0);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 0 10px rgba(176, 141, 87, 0.14);
+  }
+}

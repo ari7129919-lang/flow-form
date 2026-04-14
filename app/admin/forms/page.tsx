@@ -19,7 +19,7 @@ export default async function AdminFormsPage() {
         </div>
         <Link
           href="/admin/forms/new"
-          className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition-all hover:bg-emerald-700"
+          className="rounded-xl bg-[#b08d57] px-3 py-2 text-sm font-medium text-white transition-all hover:brightness-95"
         >
           טופס חדש
         </Link>
@@ -36,7 +36,7 @@ export default async function AdminFormsPage() {
             <div className="mt-3">
               <Link
                 href="/admin/forms/new"
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-medium text-white transition-all hover:bg-emerald-700"
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-[#b08d57] px-4 text-sm font-medium text-white transition-all hover:brightness-95"
               >
                 צור טופס חדש
               </Link>
@@ -58,7 +58,7 @@ export default async function AdminFormsPage() {
                 <div className="mt-1 text-sm text-zinc-600">צור טופס חדש כדי להתחיל לקבל תשובות.</div>
                 <Link
                   href="/admin/forms/new"
-                  className="mt-4 inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-medium text-white transition-all hover:bg-emerald-700"
+                  className="mt-4 inline-flex h-11 items-center justify-center rounded-xl bg-[#b08d57] px-4 text-sm font-medium text-white transition-all hover:brightness-95"
                 >
                   צור טופס ראשון
                 </Link>
@@ -95,7 +95,7 @@ export default async function AdminFormsPage() {
             <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3">
               <div className="font-medium text-zinc-900">מייל יעד</div>
               <div className="mt-1 text-xs text-zinc-600">ודא שהוגדר מייל לקבלת התוצאות.</div>
-              <Link href="/admin/settings" className="mt-2 inline-flex text-xs font-medium text-emerald-700 underline">
+              <Link href="/admin/settings" className="mt-2 inline-flex text-xs font-medium text-[#b08d57] underline">
                 פתח הגדרות
               </Link>
             </div>

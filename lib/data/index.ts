@@ -138,6 +138,31 @@ export async function listForms(): Promise<AdminForm[]> {
   }));
 }
 
+export async function resetAllData(args?: { deleteForms?: boolean }) {
+  const env = getServerEnv();
+  if (env.USE_MOCK_DATA) {
+    if (args?.deleteForms) {
+      mockStore.resetAll();
+    } else {
+      mockStore.resetResponsesOnly();
+    }
+    return;
+  }
+
+  const supabase = getSupabaseServerClient();
+
+  await supabase.from("ff_answers").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabase.from("ff_events").delete().neq("id", 0);
+  await supabase.from("ff_sessions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
+  if (args?.deleteForms) {
+    await supabase.from("ff_questions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await supabase.from("ff_forms").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  }
+
+  await supabase.from("ff_settings").upsert({ key: "admin_receiver_email", value: "" });
+}
+
 export async function getFormAdmin(formId: string): Promise<{ form: AdminForm; questions: AdminQuestion[] } | null> {
   const env = getServerEnv();
   if (env.USE_MOCK_DATA) {

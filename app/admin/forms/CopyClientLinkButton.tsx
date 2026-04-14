@@ -25,7 +25,7 @@ export default function CopyClientLinkButton({ slug }: { slug: string }) {
       onClick={onCopy}
       className={
         "rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-700 transition-all hover:bg-zinc-100 " +
-        (copied ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-50" : "")
+        (copied ? "border-[#b08d57]/40 bg-[#f6f1e6] text-zinc-900 hover:bg-[#f6f1e6]/80" : "")
       }
       aria-label="העתק קישור ללקוח"
       title={relativeUrl}

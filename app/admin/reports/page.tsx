@@ -46,7 +46,7 @@ export default async function AdminReportsPage({
               className={
                 "rounded-xl border px-3 py-2 text-sm transition-all " +
                 (!formId
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  ? "border-[#b08d57]/30 bg-[#f6f1e6] text-zinc-900"
                   : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100")
               }
             >
@@ -59,7 +59,7 @@ export default async function AdminReportsPage({
                 className={
                   "rounded-xl border px-3 py-2 text-sm transition-all " +
                   (formId === f.id
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    ? "border-[#b08d57]/30 bg-[#f6f1e6] text-zinc-900"
                     : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100")
                 }
               >
@@ -75,7 +75,7 @@ export default async function AdminReportsPage({
             className={
               "rounded-xl border px-3 py-2 text-sm transition-all " +
               (tab === "overview"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                ? "border-[#b08d57]/30 bg-[#f6f1e6] text-zinc-900"
                 : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100")
             }
           >
@@ -86,7 +86,7 @@ export default async function AdminReportsPage({
             className={
               "rounded-xl border px-3 py-2 text-sm transition-all " +
               (tab === "answers"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                ? "border-[#b08d57]/30 bg-[#f6f1e6] text-zinc-900"
                 : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100")
             }
           >
@@ -97,7 +97,7 @@ export default async function AdminReportsPage({
             className={
               "rounded-xl border px-3 py-2 text-sm transition-all " +
               (tab === "funnel"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                ? "border-[#b08d57]/30 bg-[#f6f1e6] text-zinc-900"
                 : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100")
             }
           >

@@ -41,7 +41,7 @@ export default async function AdminHomePage() {
           <div className="text-xs text-zinc-500">טפסים</div>
           <div className="mt-2 text-3xl font-semibold text-zinc-900">{formsArr.length}</div>
           <div className="mt-3">
-            <Link href="/admin/forms" className="text-xs font-medium text-emerald-700 underline">
+            <Link href="/admin/forms" className="text-xs font-medium text-[#b08d57] underline">
               פתח ניהול טפסים
             </Link>
           </div>
@@ -50,7 +50,7 @@ export default async function AdminHomePage() {
           <div className="text-xs text-zinc-500">התחילו</div>
           <div className="mt-2 text-3xl font-semibold text-zinc-900">{overview.funnel.started}</div>
           <div className="mt-3">
-            <Link href="/admin/reports?tab=overview" className="text-xs font-medium text-emerald-700 underline">
+            <Link href="/admin/reports?tab=overview" className="text-xs font-medium text-[#b08d57] underline">
               פתח דוחות
             </Link>
           </div>
@@ -64,7 +64,7 @@ export default async function AdminHomePage() {
           <div className="text-xs text-zinc-500">הושלמו</div>
           <div className="mt-2 text-3xl font-semibold text-zinc-900">{overview.funnel.completed}</div>
           <div className="mt-3">
-            <Link href="/admin/sessions" className="text-xs font-medium text-emerald-700 underline">
+            <Link href="/admin/sessions" className="text-xs font-medium text-[#b08d57] underline">
               פתח תשובות
             </Link>
           </div>
@@ -80,7 +80,7 @@ export default async function AdminHomePage() {
             </div>
             <Link
               href="/admin/forms/new"
-              className="inline-flex h-10 items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-medium text-white transition-all hover:bg-emerald-700"
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-[#b08d57] px-4 text-sm font-medium text-white transition-all hover:brightness-95"
             >
               צור טופס חדש
             </Link>
@@ -122,7 +122,7 @@ export default async function AdminHomePage() {
             <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3">
               <div className="text-xs text-zinc-500">דוחות</div>
               <div className="mt-1 font-medium text-zinc-900">משפך נטישות + פילטר לפי טופס</div>
-              <Link href="/admin/reports?tab=funnel" className="mt-2 inline-flex text-xs font-medium text-emerald-700 underline">
+              <Link href="/admin/reports?tab=funnel" className="mt-2 inline-flex text-xs font-medium text-[#b08d57] underline">
                 פתח משפך
               </Link>
             </div>
@@ -134,7 +134,7 @@ export default async function AdminHomePage() {
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="text-sm font-semibold text-zinc-900">טפסים אחרונים</div>
-            <Link href="/admin/forms" className="text-xs font-medium text-emerald-700 underline">
+            <Link href="/admin/forms" className="text-xs font-medium text-[#b08d57] underline">
               לכל הטפסים
             </Link>
           </div>
@@ -167,7 +167,7 @@ export default async function AdminHomePage() {
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="text-sm font-semibold text-zinc-900">תשובות אחרונות</div>
-            <Link href="/admin/sessions" className="text-xs font-medium text-emerald-700 underline">
+            <Link href="/admin/sessions" className="text-xs font-medium text-[#b08d57] underline">
               לכל התשובות
             </Link>
           </div>

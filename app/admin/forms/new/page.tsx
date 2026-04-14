@@ -44,13 +44,13 @@ export default function AdminNewFormPage() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="שם הטופס"
-          className="h-11 rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-500"
+          className="h-11 rounded-xl border border-zinc-300 px-3 outline-none focus:border-[#b08d57]"
         />
         <input
           value={slug}
           onChange={(e) => setSlug(e.target.value)}
           placeholder="slug (לדוגמה: tax-consultation)"
-          className="h-11 rounded-xl border border-zinc-300 px-3 outline-none focus:border-emerald-500"
+          className="h-11 rounded-xl border border-zinc-300 px-3 outline-none focus:border-[#b08d57]"
         />
 
         {error ? <div className="text-sm text-red-600">{error}</div> : null}
@@ -58,7 +58,7 @@ export default function AdminNewFormPage() {
         <button
           type="submit"
           disabled={loading || name.trim().length === 0 || slug.trim().length === 0}
-          className="h-11 rounded-xl bg-emerald-600 text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
+          className="h-11 rounded-xl bg-[#b08d57] text-white transition-all hover:brightness-95 disabled:opacity-50"
         >
           {loading ? "יוצר..." : "צור טופס"}
         </button>
