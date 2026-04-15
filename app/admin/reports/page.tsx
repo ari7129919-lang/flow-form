@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { getFunnelReport, getReportsOverview, listForms } from "@/lib/data";
+import {
+  getLifecycleFunnelReport,
+  getProblemQuestionsReport,
+  listForms,
+} from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -13,12 +17,12 @@ export default async function AdminReportsPage({
   const formId = typeof formIdRaw === "string" && formIdRaw.trim().length > 0 ? formIdRaw : null;
 
   const tabRaw = sp.tab;
-  const tab = typeof tabRaw === "string" && ["overview", "answers", "funnel"].includes(tabRaw) ? tabRaw : "overview";
+  const tab = typeof tabRaw === "string" && ["funnel", "questions"].includes(tabRaw) ? tabRaw : "funnel";
 
-  const [forms, overview, funnel] = await Promise.all([
+  const [forms, lifecycle, problems] = await Promise.all([
     listForms(),
-    getReportsOverview({ formId }),
-    getFunnelReport({ formId }),
+    getLifecycleFunnelReport({ formId }),
+    getProblemQuestionsReport({ formId }),
   ]);
 
   return (
@@ -71,28 +75,6 @@ export default async function AdminReportsPage({
 
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
-            href={`/admin/reports?tab=overview${formId ? `&formId=${encodeURIComponent(formId)}` : ""}`}
-            className={
-              "rounded-xl border px-3 py-2 text-sm transition-all " +
-              (tab === "overview"
-                ? "border-[#b08d57]/30 bg-[#f6f1e6] text-zinc-900"
-                : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100")
-            }
-          >
-            סיכום
-          </Link>
-          <Link
-            href={`/admin/reports?tab=answers${formId ? `&formId=${encodeURIComponent(formId)}` : ""}`}
-            className={
-              "rounded-xl border px-3 py-2 text-sm transition-all " +
-              (tab === "answers"
-                ? "border-[#b08d57]/30 bg-[#f6f1e6] text-zinc-900"
-                : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100")
-            }
-          >
-            תשובות לפי שאלה
-          </Link>
-          <Link
             href={`/admin/reports?tab=funnel${formId ? `&formId=${encodeURIComponent(formId)}` : ""}`}
             className={
               "rounded-xl border px-3 py-2 text-sm transition-all " +
@@ -101,65 +83,85 @@ export default async function AdminReportsPage({
                 : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100")
             }
           >
-            משפך נטישות
+            דוח משפך
+          </Link>
+          <Link
+            href={`/admin/reports?tab=questions${formId ? `&formId=${encodeURIComponent(formId)}` : ""}`}
+            className={
+              "rounded-xl border px-3 py-2 text-sm transition-all " +
+              (tab === "questions"
+                ? "border-[#b08d57]/30 bg-[#f6f1e6] text-zinc-900"
+                : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100")
+            }
+          >
+            שאלות בעייתיות
           </Link>
         </div>
       </div>
 
-      {tab === "overview" ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <div className="text-xs text-zinc-500">התחילו</div>
-            <div className="mt-2 text-3xl font-semibold text-zinc-900">{overview.funnel.started}</div>
-          </div>
-          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <div className="text-xs text-zinc-500">אומתו</div>
-            <div className="mt-2 text-3xl font-semibold text-zinc-900">{overview.funnel.verified}</div>
-          </div>
-          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <div className="text-xs text-zinc-500">הושלמו</div>
-            <div className="mt-2 text-3xl font-semibold text-zinc-900">{overview.funnel.completed}</div>
-          </div>
-        </div>
-      ) : null}
-
-      {tab === "answers" ? (
+      {tab === "funnel" ? (
         <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-          <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium">מענה לפי מספר שאלה</div>
-          {overview.answersByQuestionOrder.length === 0 ? (
+          <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium">
+            משפך: כניסות → אימות → התחלת שאלות → השלמה
+          </div>
+
+          {lifecycle.steps.length === 0 ? (
             <div className="px-4 py-8 text-sm text-zinc-600">אין עדיין נתונים להצגה.</div>
           ) : (
             <div className="divide-y divide-zinc-100">
-              {overview.answersByQuestionOrder.map((row) => (
-                <div key={row.questionOrder} className="grid grid-cols-12 gap-2 px-4 py-3 text-sm">
-                  <div className="col-span-4 font-medium text-zinc-900">שאלה {row.questionOrder}</div>
-                  <div className="col-span-8 text-zinc-700">{row.answers} נענו</div>
-                </div>
-              ))}
+              {lifecycle.steps.map((s, idx) => {
+                const prev = idx === 0 ? lifecycle.totalSessions : lifecycle.steps[idx - 1]?.count ?? lifecycle.totalSessions;
+                const keptPct = prev > 0 ? Math.round((s.count / prev) * 1000) / 10 : 0;
+                const dropPct = idx === 0 || prev <= 0 ? 0 : Math.round(((prev - s.count) / prev) * 1000) / 10;
+                return (
+                  <div key={s.key} className="grid grid-cols-12 items-center gap-2 px-4 py-3 text-sm">
+                    <div className="col-span-5 font-medium text-zinc-900">{s.label}</div>
+                    <div className="col-span-2 text-zinc-700">{s.count}</div>
+                    <div className="col-span-5 text-left text-zinc-600">
+                      {idx === 0 ? "—" : `נשארו ${keptPct}% | נשירה ${dropPct}%`}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       ) : null}
 
-      {tab === "funnel" ? (
+      {tab === "questions" ? (
         <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-          <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium">משפך נטישות (מדויק)</div>
-          {funnel.steps.length === 0 ? (
+          <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium">
+            שאלות בעייתיות (נטישה לפי שאלה)
+          </div>
+
+          {problems.rows.length === 0 ? (
             <div className="px-4 py-8 text-sm text-zinc-600">אין עדיין נתונים להצגה.</div>
           ) : (
-            <div className="divide-y divide-zinc-100">
-              {funnel.steps.map((s, idx) => {
-                const prev = idx === 0 ? funnel.totalSessions : funnel.steps[idx - 1]?.count ?? funnel.totalSessions;
-                const pct = prev > 0 ? Math.round((s.count / prev) * 100) : 0;
-                return (
-                  <div key={s.key} className="grid grid-cols-12 items-center gap-2 px-4 py-3 text-sm">
-                    <div className="col-span-6 font-medium text-zinc-900">{s.label}</div>
-                    <div className="col-span-3 text-zinc-700">{s.count}</div>
-                    <div className="col-span-3 text-left text-zinc-600">{idx === 0 ? "—" : `${pct}%`}</div>
+            <>
+              <div className="border-b border-zinc-200 px-4 py-3 text-xs text-zinc-600">
+                בסיס החישוב: {problems.totalVerified} משתמשים שעברו אימות
+              </div>
+
+              <div className="grid grid-cols-12 gap-2 border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-xs font-medium text-zinc-600">
+                <div className="col-span-2">שאלה</div>
+                <div className="col-span-3">הגיעו לשאלה</div>
+                <div className="col-span-3">ענו על השאלה</div>
+                <div className="col-span-2">נשרו</div>
+                <div className="col-span-2 text-left">% נשירה</div>
+              </div>
+
+              <div className="divide-y divide-zinc-100">
+                {problems.rows.map((r) => (
+                  <div key={r.questionOrder} className="grid grid-cols-12 items-center gap-2 px-4 py-3 text-sm">
+                    <div className="col-span-2 font-medium text-zinc-900">{r.questionOrder}</div>
+                    <div className="col-span-3 text-zinc-700">{r.reached}</div>
+                    <div className="col-span-3 text-zinc-700">{r.answered}</div>
+                    <div className="col-span-2 text-zinc-700">{r.dropped}</div>
+                    <div className="col-span-2 text-left text-zinc-600">{r.droppedPct}%</div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       ) : null}

@@ -688,6 +688,212 @@ export type FunnelReport = {
   steps: FunnelStep[];
 };
 
+export type LifecycleFunnelReport = {
+  totalSessions: number;
+  steps: FunnelStep[];
+};
+
+export async function getLifecycleFunnelReport(args: {
+  formId?: string | null;
+}): Promise<LifecycleFunnelReport> {
+  const env = getServerEnv();
+  const formId = args.formId ?? null;
+
+  if (env.USE_MOCK_DATA) {
+    const sessions = mockStore
+      .listSessions()
+      .filter((s: any) => (formId ? s.formId === formId : true));
+    const sessionIds = new Set(sessions.map((s: any) => String(s.id)));
+    const allEvents: any[] = (globalThis as any).__ffMockState?.events ?? [];
+
+    const verified = new Set<string>();
+    const startedQuestions = new Set<string>();
+    for (const e of allEvents) {
+      const sid = String(e.sessionId);
+      if (!sessionIds.has(sid)) continue;
+      if (e.type === "otp_verified") verified.add(sid);
+      if (e.type === "answer") startedQuestions.add(sid);
+    }
+
+    const completed = sessions.filter((s: any) => s.status === "completed").length;
+
+    return {
+      totalSessions: sessions.length,
+      steps: [
+        { key: "entered", label: "כניסות לבוט", count: sessions.length },
+        { key: "verified", label: "עברו אימות", count: verified.size },
+        { key: "started_questions", label: "התחילו את השאלות", count: startedQuestions.size },
+        { key: "completed", label: "השלימו את כל השאלות", count: completed },
+      ],
+    };
+  }
+
+  const supabase = getSupabaseServerClient();
+  const sessionsQ = supabase.from("ff_sessions").select("id, status, form_id");
+  if (formId) sessionsQ.eq("form_id", formId);
+  const { data: sessions, error: sErr } = await sessionsQ;
+  if (sErr) throw sErr;
+  const ids = (sessions ?? []).map((s) => s.id);
+  if (ids.length === 0) return { totalSessions: 0, steps: [] };
+
+  const { data: evs, error: eErr } = await supabase
+    .from("ff_events")
+    .select("session_id, type")
+    .in("session_id", ids)
+    .in("type", ["otp_verified", "answer"]);
+  if (eErr) throw eErr;
+
+  const verified = new Set<string>();
+  const startedQuestions = new Set<string>();
+  for (const e of evs ?? []) {
+    const sid = String((e as any).session_id);
+    const type = String((e as any).type);
+    if (type === "otp_verified") verified.add(sid);
+    if (type === "answer") startedQuestions.add(sid);
+  }
+
+  const completed = (sessions ?? []).filter((s) => (s as any).status === "completed").length;
+
+  return {
+    totalSessions: ids.length,
+    steps: [
+      { key: "entered", label: "כניסות לבוט", count: ids.length },
+      { key: "verified", label: "עברו אימות", count: verified.size },
+      { key: "started_questions", label: "התחילו את השאלות", count: startedQuestions.size },
+      { key: "completed", label: "השלימו את כל השאלות", count: completed },
+    ],
+  };
+}
+
+export type ProblemQuestionRow = {
+  questionOrder: number;
+  reached: number;
+  answered: number;
+  dropped: number;
+  droppedPct: number;
+};
+
+export type ProblemQuestionsReport = {
+  totalVerified: number;
+  rows: ProblemQuestionRow[];
+};
+
+export async function getProblemQuestionsReport(args: {
+  formId?: string | null;
+}): Promise<ProblemQuestionsReport> {
+  const env = getServerEnv();
+  const formId = args.formId ?? null;
+
+  if (env.USE_MOCK_DATA) {
+    const sessions = mockStore
+      .listSessions()
+      .filter((s: any) => (formId ? s.formId === formId : true));
+    const sessionIds = new Set(sessions.map((s: any) => String(s.id)));
+    const allEvents: any[] = (globalThis as any).__ffMockState?.events ?? [];
+
+    const verified = new Set<string>();
+    const maxAnswered = new Map<string, number>();
+
+    for (const e of allEvents) {
+      const sid = String(e.sessionId);
+      if (!sessionIds.has(sid)) continue;
+      if (e.type === "otp_verified") verified.add(sid);
+      if (e.type === "answer") {
+        const qo = Number(e.questionOrder);
+        if (!Number.isFinite(qo)) continue;
+        const prev = maxAnswered.get(sid) ?? 0;
+        maxAnswered.set(sid, Math.max(prev, qo));
+      }
+    }
+
+    const maxQ = Math.max(
+      0,
+      ...sessions
+        .map((s: any) => Number(s.currentQuestionOrder ?? 0))
+        .filter((n) => Number.isFinite(n)),
+      ...[...maxAnswered.values()],
+    );
+
+    const verifiedIds = [...verified];
+    const rows: ProblemQuestionRow[] = [];
+    for (let i = 1; i <= maxQ; i++) {
+      let reached = 0;
+      let answered = 0;
+      for (const sid of verifiedIds) {
+        const m = maxAnswered.get(sid) ?? 0;
+        if (m >= i - 1) reached++;
+        if (m >= i) answered++;
+      }
+      const dropped = Math.max(0, reached - answered);
+      const droppedPct = reached > 0 ? Math.round((dropped / reached) * 1000) / 10 : 0;
+      rows.push({ questionOrder: i, reached, answered, dropped, droppedPct });
+    }
+
+    return { totalVerified: verified.size, rows };
+  }
+
+  const supabase = getSupabaseServerClient();
+  const sessionsQ = supabase.from("ff_sessions").select("id, form_id");
+  if (formId) sessionsQ.eq("form_id", formId);
+  const { data: sessions, error: sErr } = await sessionsQ;
+  if (sErr) throw sErr;
+  const ids = (sessions ?? []).map((s) => s.id);
+  if (ids.length === 0) return { totalVerified: 0, rows: [] };
+
+  const { data: evs, error: eErr } = await supabase
+    .from("ff_events")
+    .select("session_id, type, question_order")
+    .in("session_id", ids)
+    .in("type", ["otp_verified", "answer"]);
+  if (eErr) throw eErr;
+
+  const verified = new Set<string>();
+  const maxAnswered = new Map<string, number>();
+
+  for (const e of evs ?? []) {
+    const sid = String((e as any).session_id);
+    const type = String((e as any).type);
+    if (type === "otp_verified") verified.add(sid);
+    if (type === "answer") {
+      const qo = Number((e as any).question_order);
+      if (!Number.isFinite(qo)) continue;
+      const prev = maxAnswered.get(sid) ?? 0;
+      maxAnswered.set(sid, Math.max(prev, qo));
+    }
+  }
+
+  let maxQ = 0;
+  if (formId) {
+    const { data: qRows, error: qErr } = await supabase
+      .from("ff_questions")
+      .select("order")
+      .eq("form_id", formId)
+      .order("order", { ascending: false })
+      .limit(1);
+    if (qErr) throw qErr;
+    maxQ = Number(qRows?.[0]?.order ?? 0);
+  } else {
+    maxQ = Math.max(0, ...[...maxAnswered.values()]);
+  }
+
+  const verifiedIds = [...verified];
+  const rows: ProblemQuestionRow[] = [];
+  for (let i = 1; i <= maxQ; i++) {
+    let reached = 0;
+    let answered = 0;
+    for (const sid of verifiedIds) {
+      const m = maxAnswered.get(String(sid)) ?? 0;
+      if (m >= i - 1) reached++;
+      if (m >= i) answered++;
+    }
+    const dropped = Math.max(0, reached - answered);
+    const droppedPct = reached > 0 ? Math.round((dropped / reached) * 1000) / 10 : 0;
+    rows.push({ questionOrder: i, reached, answered, dropped, droppedPct });
+  }
+
+  return { totalVerified: verified.size, rows };
+}
+
 export async function getFunnelReport(args: { formId?: string | null }): Promise<FunnelReport> {
   const env = getServerEnv();
   const formId = args.formId ?? null;
