@@ -89,6 +89,220 @@ export async function getFormBySlug(slug: string) {
   return data;
 }
 
+export type AdminTreatmentStatus = "untreated" | "treated" | "reviewing";
+
+export type AdminSessionRow = {
+  id: string;
+  formId: string;
+  name: string | null;
+  email: string;
+  phone: string | null;
+  status: string;
+  createdAt: string;
+  completedAt: string | null;
+  treatmentStatus: AdminTreatmentStatus;
+  treatmentNote: string | null;
+  treatedAt: string | null;
+};
+
+export type AdminSessionsCounts = {
+  all: number;
+  untreated: number;
+  treated: number;
+  reviewing: number;
+};
+
+function normalizeTreatmentStatus(v: unknown): AdminTreatmentStatus {
+  return v === "treated" || v === "reviewing" ? v : "untreated";
+}
+
+export async function listAdminSessions(args: {
+  formId?: string | null;
+  emailQuery?: string | null;
+  dateFrom?: string | null; // YYYY-MM-DD
+  dateTo?: string | null; // YYYY-MM-DD
+  treatmentStatus?: AdminTreatmentStatus | "all" | null;
+}): Promise<AdminSessionRow[]> {
+  const env = getServerEnv();
+  const formId = args.formId ?? null;
+  const emailQuery = (args.emailQuery ?? "").trim();
+  const dateFrom = args.dateFrom ?? null;
+  const dateTo = args.dateTo ?? null;
+  const treatmentStatus = args.treatmentStatus ?? null;
+
+  if (env.USE_MOCK_DATA) {
+    let sessions = mockStore
+      .listSessions()
+      .filter((s: any) => s.status === "completed")
+      .filter((s: any) => (formId ? String(s.formId) === String(formId) : true));
+
+    if (emailQuery) {
+      const q = emailQuery.toLowerCase();
+      sessions = sessions.filter((s: any) => String(s.email ?? "").toLowerCase().includes(q));
+    }
+
+    if (dateFrom) {
+      const from = new Date(dateFrom + "T00:00:00.000Z").getTime();
+      sessions = sessions.filter((s: any) => {
+        const iso = s.completedAt ?? s.createdAt;
+        const t = new Date(iso).getTime();
+        return Number.isFinite(t) ? t >= from : true;
+      });
+    }
+    if (dateTo) {
+      const to = new Date(dateTo + "T23:59:59.999Z").getTime();
+      sessions = sessions.filter((s: any) => {
+        const iso = s.completedAt ?? s.createdAt;
+        const t = new Date(iso).getTime();
+        return Number.isFinite(t) ? t <= to : true;
+      });
+    }
+
+    if (treatmentStatus && treatmentStatus !== "all") {
+      sessions = sessions.filter((s: any) => normalizeTreatmentStatus(s.treatmentStatus) === treatmentStatus);
+    }
+
+    sessions.sort((a: any, b: any) => String(b.completedAt ?? b.createdAt).localeCompare(String(a.completedAt ?? a.createdAt)));
+
+    return sessions.map((s: any) => ({
+      id: String(s.id),
+      formId: String(s.formId),
+      name: s.name ?? null,
+      email: String(s.email ?? ""),
+      phone: s.phone ?? null,
+      status: String(s.status ?? ""),
+      createdAt: String(s.createdAt),
+      completedAt: s.completedAt ?? null,
+      treatmentStatus: normalizeTreatmentStatus(s.treatmentStatus),
+      treatmentNote: s.treatmentNote ?? null,
+      treatedAt: s.treatedAt ?? null,
+    }));
+  }
+
+  const supabase = getSupabaseServerClient();
+
+  const buildQuery = (withTreatmentCols: boolean) => {
+    const cols = withTreatmentCols
+      ? "id, form_id, name, email, phone, status, created_at, completed_at, treatment_status, treatment_note, treated_at"
+      : "id, form_id, name, email, phone, status, created_at, completed_at";
+    const q = supabase
+      .from("ff_sessions")
+      .select(cols)
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false });
+    if (formId) q.eq("form_id", formId);
+    if (emailQuery) q.ilike("email", `%${emailQuery}%`);
+    if (dateFrom) q.gte("completed_at", dateFrom + "T00:00:00.000Z");
+    if (dateTo) q.lte("completed_at", dateTo + "T23:59:59.999Z");
+    if (withTreatmentCols && treatmentStatus && treatmentStatus !== "all") q.eq("treatment_status", treatmentStatus);
+    return q;
+  };
+
+  const primary = await buildQuery(true);
+  if (primary.error) {
+    if (!isMissingColumnError(primary.error)) throw primary.error;
+    const fallback = await buildQuery(false);
+    if (fallback.error) throw fallback.error;
+    return (fallback.data ?? []).map((s: any) => ({
+      id: s.id,
+      formId: s.form_id,
+      name: s.name ?? null,
+      email: s.email,
+      phone: s.phone ?? null,
+      status: s.status,
+      createdAt: s.created_at,
+      completedAt: s.completed_at,
+      treatmentStatus: "untreated",
+      treatmentNote: null,
+      treatedAt: null,
+    }));
+  }
+
+  return (primary.data ?? []).map((s: any) => ({
+    id: s.id,
+    formId: s.form_id,
+    name: s.name ?? null,
+    email: s.email,
+    phone: s.phone ?? null,
+    status: s.status,
+    createdAt: s.created_at,
+    completedAt: s.completed_at,
+    treatmentStatus: normalizeTreatmentStatus(s.treatment_status),
+    treatmentNote: s.treatment_note ?? null,
+    treatedAt: s.treated_at ?? null,
+  }));
+}
+
+export async function getAdminSessionsCounts(args: {
+  formId?: string | null;
+  emailQuery?: string | null;
+  dateFrom?: string | null;
+  dateTo?: string | null;
+}): Promise<AdminSessionsCounts> {
+  const env = getServerEnv();
+  const sessions = await listAdminSessions({
+    formId: args.formId ?? null,
+    emailQuery: args.emailQuery ?? null,
+    dateFrom: args.dateFrom ?? null,
+    dateTo: args.dateTo ?? null,
+    treatmentStatus: "all",
+  });
+
+  if (env.USE_MOCK_DATA) {
+    const counts: AdminSessionsCounts = { all: sessions.length, untreated: 0, treated: 0, reviewing: 0 };
+    for (const s of sessions) counts[s.treatmentStatus]++;
+    return counts;
+  }
+
+  const counts: AdminSessionsCounts = { all: sessions.length, untreated: 0, treated: 0, reviewing: 0 };
+  for (const s of sessions) counts[s.treatmentStatus]++;
+  return counts;
+}
+
+export async function updateSessionTreatment(args: {
+  sessionId: string;
+  treatmentStatus: AdminTreatmentStatus;
+  treatmentNote?: string | null;
+}) {
+  const env = getServerEnv();
+  if (env.USE_MOCK_DATA) {
+    const s = mockStore.updateTreatment({
+      sessionId: args.sessionId,
+      treatmentStatus: args.treatmentStatus,
+      treatmentNote: args.treatmentNote ?? null,
+    });
+    if (!s) return;
+    mockStore.addEvent({
+      sessionId: args.sessionId,
+      type: "treatment_updated",
+      meta: { treatmentStatus: args.treatmentStatus, treatmentNote: args.treatmentNote ?? null },
+    });
+    return;
+  }
+
+  const supabase = getSupabaseServerClient();
+  const treatedAt = args.treatmentStatus === "treated" ? new Date().toISOString() : null;
+  const res = await supabase
+    .from("ff_sessions")
+    .update({
+      treatment_status: args.treatmentStatus,
+      treatment_note: args.treatmentNote ?? null,
+      treated_at: treatedAt,
+    })
+    .eq("id", args.sessionId);
+
+  if (res.error) {
+    if (!isMissingColumnError(res.error)) throw res.error;
+    return;
+  }
+
+  await supabase.from("ff_events").insert({
+    session_id: args.sessionId,
+    type: "treatment_updated",
+    meta: { treatmentStatus: args.treatmentStatus, treatmentNote: args.treatmentNote ?? null },
+  });
+}
+
 export async function listForms(): Promise<AdminForm[]> {
   const env = getServerEnv();
   if (env.USE_MOCK_DATA) {

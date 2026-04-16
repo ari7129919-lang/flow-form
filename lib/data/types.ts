@@ -41,6 +41,9 @@ export type Session = {
   currentQuestionOrder: number;
   createdAt: string;
   completedAt: string | null;
+  treatmentStatus: "untreated" | "treated" | "reviewing";
+  treatmentNote: string | null;
+  treatedAt: string | null;
 };
 
 export type Event = {

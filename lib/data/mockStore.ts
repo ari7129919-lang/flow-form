@@ -177,6 +177,9 @@ export const mockStore = {
       currentQuestionOrder: 0,
       createdAt: nowIso(),
       completedAt: null,
+      treatmentStatus: "untreated" as any,
+      treatmentNote: null as any,
+      treatedAt: null as any,
     };
     sessions.push(s);
     return s;
@@ -233,6 +236,19 @@ export const mockStore = {
     if (!s) return null;
     s.status = "completed";
     s.completedAt = nowIso();
+    return s;
+  },
+
+  updateTreatment(args: {
+    sessionId: string;
+    treatmentStatus: string;
+    treatmentNote?: string | null;
+  }) {
+    const s: any = sessions.find((x) => x.id === args.sessionId);
+    if (!s) return null;
+    s.treatmentStatus = args.treatmentStatus;
+    s.treatmentNote = args.treatmentNote ?? null;
+    s.treatedAt = args.treatmentStatus === "treated" ? nowIso() : null;
     return s;
   },
   listCompletedSessions() {

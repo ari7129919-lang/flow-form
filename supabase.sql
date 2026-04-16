@@ -62,6 +62,15 @@ create table if not exists public.ff_sessions (
   completed_at timestamptz null
 );
 
+alter table public.ff_sessions
+  add column if not exists treatment_status text not null default 'untreated';
+
+alter table public.ff_sessions
+  add column if not exists treatment_note text null;
+
+alter table public.ff_sessions
+  add column if not exists treated_at timestamptz null;
+
 create index if not exists ff_sessions_form_id_idx on public.ff_sessions(form_id);
 create index if not exists ff_sessions_email_idx on public.ff_sessions(email);
 create index if not exists ff_sessions_phone_idx on public.ff_sessions(phone);
