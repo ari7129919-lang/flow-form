@@ -244,14 +244,14 @@ export default function AdminSessionsPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+      <div dir="rtl" className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
         <div className="grid grid-cols-12 gap-2 border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-xs font-medium text-zinc-600">
-          <div className="col-span-4">מייל</div>
+          <div className="col-span-3">מייל</div>
           <div className="col-span-2">טלפון</div>
           <div className="col-span-2">שם</div>
+          <div className="col-span-2">פעולות</div>
           <div className="col-span-2">זמן סיום</div>
           <div className="col-span-1">סטטוס</div>
-          <div className="col-span-2 text-left">פעולות</div>
         </div>
 
         {loading && sessions.length === 0 ? (
@@ -265,7 +265,7 @@ export default function AdminSessionsPage() {
                 key={s.id}
                 className="grid grid-cols-12 items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-zinc-50"
               >
-                <div className="col-span-4 truncate font-medium text-zinc-900">
+                <div className="col-span-3 truncate font-medium text-zinc-900">
                   <div className="flex min-w-0 flex-row-reverse items-center gap-2">
                     <span className="truncate">{s.email}</span>
                     {s.adminViewedAt || (Number(s.adminViewCount ?? 0) > 0) ? (
@@ -280,21 +280,8 @@ export default function AdminSessionsPage() {
                 </div>
                 <div className="col-span-2 truncate text-zinc-700">{s.phone ?? ""}</div>
                 <div className="col-span-2 truncate text-zinc-700">{s.name ?? ""}</div>
-                <div className="col-span-2 truncate text-zinc-600">
-                  {fmtDateTime(s.completedAt ?? s.completed_at ?? s.createdAt ?? s.created_at)}
-                </div>
-                <div className="col-span-1">
-                  <span
-                    title={s.treatmentNote ?? ""}
-                    className={`inline-flex items-center rounded-lg border px-2 py-1 text-xs ${statusBadge(s.treatmentStatus)} ${
-                      s.treatmentNote ? "cursor-help" : ""
-                    }`}
-                  >
-                    {statusText(s.treatmentStatus)}
-                  </span>
-                </div>
                 <div className="col-span-2">
-                  <div className="flex items-center justify-start gap-2">
+                  <div className="flex items-center justify-end gap-2">
                     <Link
                       className="shrink-0 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-700 transition-all hover:bg-zinc-100"
                       href={`/admin/sessions/${s.id}`}
@@ -309,6 +296,19 @@ export default function AdminSessionsPage() {
                       {treatmentButtonText()}
                     </button>
                   </div>
+                </div>
+                <div className="col-span-2 truncate text-zinc-600">
+                  {fmtDateTime(s.completedAt ?? s.completed_at ?? s.createdAt ?? s.created_at)}
+                </div>
+                <div className="col-span-1">
+                  <span
+                    title={s.treatmentNote ?? ""}
+                    className={`inline-flex items-center rounded-lg border px-2 py-1 text-xs ${statusBadge(s.treatmentStatus)} ${
+                      s.treatmentNote ? "cursor-help" : ""
+                    }`}
+                  >
+                    {statusText(s.treatmentStatus)}
+                  </span>
                 </div>
               </div>
             ))}
