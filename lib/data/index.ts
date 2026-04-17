@@ -103,6 +103,8 @@ export type AdminSessionRow = {
   treatmentStatus: AdminTreatmentStatus;
   treatmentNote: string | null;
   treatedAt: string | null;
+  adminViewedAt: string | null;
+  adminViewCount: number;
 };
 
 export type AdminSessionsCounts = {
@@ -181,6 +183,8 @@ export async function listAdminSessions(args: {
       treatmentStatus: normalizeTreatmentStatus(s.treatmentStatus),
       treatmentNote: s.treatmentNote ?? null,
       treatedAt: s.treatedAt ?? null,
+      adminViewedAt: s.adminViewedAt ?? null,
+      adminViewCount: Number.isFinite(s.adminViewCount) ? s.adminViewCount : 0,
     }));
   }
 
@@ -188,7 +192,7 @@ export async function listAdminSessions(args: {
 
   const buildQuery = (withTreatmentCols: boolean) => {
     const cols = withTreatmentCols
-      ? "id, form_id, name, email, phone, status, created_at, completed_at, treatment_status, treatment_note, treated_at"
+      ? "id, form_id, name, email, phone, status, created_at, completed_at, treatment_status, treatment_note, treated_at, admin_viewed_at, admin_view_count"
       : "id, form_id, name, email, phone, status, created_at, completed_at";
     const q = supabase
       .from("ff_sessions")
@@ -220,6 +224,8 @@ export async function listAdminSessions(args: {
       treatmentStatus: "untreated",
       treatmentNote: null,
       treatedAt: null,
+      adminViewedAt: null,
+      adminViewCount: 0,
     }));
   }
 
@@ -235,6 +241,8 @@ export async function listAdminSessions(args: {
     treatmentStatus: normalizeTreatmentStatus(s.treatment_status),
     treatmentNote: s.treatment_note ?? null,
     treatedAt: s.treated_at ?? null,
+    adminViewedAt: s.admin_viewed_at ?? null,
+    adminViewCount: Number.isFinite(s.admin_view_count) ? s.admin_view_count : 0,
   }));
 }
 
@@ -767,7 +775,7 @@ export async function getSessionReport(sessionId: string) {
   const primary = await supabase
     .from("ff_sessions")
     .select(
-      "id, form_id, name, email, phone, status, created_at, completed_at, treatment_status, treatment_note, treated_at",
+      "id, form_id, name, email, phone, status, created_at, completed_at, treatment_status, treatment_note, treated_at, admin_viewed_at, admin_view_count",
     )
     .eq("id", sessionId)
     .single();
@@ -800,6 +808,37 @@ export async function getSessionReport(sessionId: string) {
   if (aErr) throw aErr;
 
   return { session, questions: qs, answers: ans };
+}
+
+export async function markSessionAdminViewed(sessionId: string) {
+  const env = getServerEnv();
+  if (env.USE_MOCK_DATA) {
+    const s = (mockStore as any).markSessionAdminViewed?.(sessionId);
+    if (!s) return;
+    mockStore.addEvent({ sessionId, type: "admin_viewed" });
+    return;
+  }
+
+  const supabase = getSupabaseServerClient();
+
+  const read = await supabase.from("ff_sessions").select("admin_view_count").eq("id", sessionId).single();
+  if (read.error) {
+    if (!isMissingColumnError(read.error)) throw read.error;
+    return;
+  }
+
+  const current = Number.isFinite((read.data as any)?.admin_view_count) ? Number((read.data as any).admin_view_count) : 0;
+  const next = current + 1;
+  const write = await supabase
+    .from("ff_sessions")
+    .update({ admin_viewed_at: new Date().toISOString(), admin_view_count: next })
+    .eq("id", sessionId);
+  if (write.error) {
+    if (!isMissingColumnError(write.error)) throw write.error;
+    return;
+  }
+
+  await supabase.from("ff_events").insert({ session_id: sessionId, type: "admin_viewed" });
 }
 
 export async function getFormBootstrap(slug: string): Promise<FormBootstrap | null> {

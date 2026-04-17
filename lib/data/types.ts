@@ -44,6 +44,8 @@ export type Session = {
   treatmentStatus: "untreated" | "treated" | "reviewing";
   treatmentNote: string | null;
   treatedAt: string | null;
+  adminViewedAt: string | null;
+  adminViewCount: number;
 };
 
 export type Event = {

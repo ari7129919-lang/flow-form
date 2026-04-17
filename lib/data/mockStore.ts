@@ -180,6 +180,8 @@ export const mockStore = {
       treatmentStatus: "untreated" as any,
       treatmentNote: null as any,
       treatedAt: null as any,
+      adminViewedAt: null,
+      adminViewCount: 0,
     };
     sessions.push(s);
     return s;
@@ -249,6 +251,13 @@ export const mockStore = {
     s.treatmentStatus = args.treatmentStatus;
     s.treatmentNote = args.treatmentNote ?? null;
     s.treatedAt = args.treatmentStatus === "treated" ? nowIso() : null;
+    return s;
+  },
+  markSessionAdminViewed(sessionId: string) {
+    const s: any = sessions.find((x) => x.id === sessionId);
+    if (!s) return null;
+    s.adminViewedAt = nowIso();
+    s.adminViewCount = Number.isFinite(s.adminViewCount) ? s.adminViewCount + 1 : 1;
     return s;
   },
   listCompletedSessions() {

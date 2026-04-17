@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getSessionReport } from "@/lib/data";
+import { getSessionReport, markSessionAdminViewed } from "@/lib/data";
 
 function statusBadge(status: string) {
   if (status === "treated") return "bg-emerald-50 text-emerald-700 border-emerald-200";
@@ -19,6 +19,7 @@ export default async function AdminSessionDetailsPage({
   params: Promise<{ sessionId: string }>;
 }) {
   const { sessionId } = await params;
+  await markSessionAdminViewed(sessionId);
   const report = await getSessionReport(sessionId);
 
   if (!report) {

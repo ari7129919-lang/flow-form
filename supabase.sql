@@ -71,6 +71,12 @@ alter table public.ff_sessions
 alter table public.ff_sessions
   add column if not exists treated_at timestamptz null;
 
+alter table public.ff_sessions
+  add column if not exists admin_viewed_at timestamptz null;
+
+alter table public.ff_sessions
+  add column if not exists admin_view_count int not null default 0;
+
 create index if not exists ff_sessions_form_id_idx on public.ff_sessions(form_id);
 create index if not exists ff_sessions_email_idx on public.ff_sessions(email);
 create index if not exists ff_sessions_phone_idx on public.ff_sessions(phone);

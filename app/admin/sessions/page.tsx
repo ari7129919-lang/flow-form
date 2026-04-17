@@ -27,6 +27,8 @@ type AdminSessionRow = {
   createdAt: string;
   treatmentStatus: "untreated" | "treated" | "reviewing";
   treatmentNote: string | null;
+  adminViewedAt?: string | null;
+  adminViewCount?: number;
 };
 
 type Counts = { all: number; untreated: number; treated: number; reviewing: number };
@@ -263,7 +265,19 @@ export default function AdminSessionsPage() {
                 key={s.id}
                 className="grid grid-cols-12 items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-zinc-50"
               >
-                <div className="col-span-4 truncate font-medium text-zinc-900">{s.email}</div>
+                <div className="col-span-4 truncate font-medium text-zinc-900">
+                  <div className="flex min-w-0 flex-row-reverse items-center gap-2">
+                    <span className="truncate">{s.email}</span>
+                    {s.adminViewedAt || (Number(s.adminViewCount ?? 0) > 0) ? (
+                      <span className="flex shrink-0 flex-row-reverse items-center gap-1">
+                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                        <span className="text-xs font-normal text-zinc-500">{Number(s.adminViewCount ?? 0)}</span>
+                      </span>
+                    ) : (
+                      <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-500" />
+                    )}
+                  </div>
+                </div>
                 <div className="col-span-2 truncate text-zinc-700">{s.phone ?? ""}</div>
                 <div className="col-span-2 truncate text-zinc-700">{s.name ?? ""}</div>
                 <div className="col-span-2 truncate text-zinc-600">
@@ -279,20 +293,22 @@ export default function AdminSessionsPage() {
                     {statusText(s.treatmentStatus)}
                   </span>
                 </div>
-                <div className="col-span-2 text-left">
-                  <Link
-                    className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-700 transition-all hover:bg-zinc-100"
-                    href={`/admin/sessions/${s.id}`}
-                  >
-                    פתיחה
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => openTreatmentDialog(s)}
-                    className="ml-2 rounded-xl bg-[#b08d57] px-3 py-1.5 text-xs font-medium text-white transition-all hover:brightness-95"
-                  >
-                    {treatmentButtonText()}
-                  </button>
+                <div className="col-span-2">
+                  <div className="flex items-center justify-start gap-2">
+                    <Link
+                      className="shrink-0 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-700 transition-all hover:bg-zinc-100"
+                      href={`/admin/sessions/${s.id}`}
+                    >
+                      פתיחה
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => openTreatmentDialog(s)}
+                      className="shrink-0 rounded-xl bg-[#b08d57] px-3 py-1.5 text-xs font-medium text-white transition-all hover:brightness-95"
+                    >
+                      {treatmentButtonText()}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
