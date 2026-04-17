@@ -51,6 +51,7 @@ function statusText(status: AdminSessionRow["treatmentStatus"]) {
 }
 
 export default function AdminSessionsPage() {
+  const REFRESH_MS = 7000;
   const [tab, setTab] = useState<TreatmentTab>("all");
   const [q, setQ] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -58,6 +59,7 @@ export default function AdminSessionsPage() {
   const [counts, setCounts] = useState<Counts>({ all: 0, untreated: 0, treated: 0, reviewing: 0 });
   const [sessions, setSessions] = useState<AdminSessionRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [treatOpen, setTreatOpen] = useState(false);
@@ -77,8 +79,11 @@ export default function AdminSessionsPage() {
 
   useEffect(() => {
     let cancelled = false;
+
     async function load() {
-      setLoading(true);
+      const isInitial = sessions.length === 0;
+      if (isInitial) setLoading(true);
+      else setRefreshing(true);
       setError(null);
       try {
         const res = await fetch(`/api/admin/sessions?${queryString}`, { cache: "no-store" });
@@ -91,14 +96,19 @@ export default function AdminSessionsPage() {
         if (cancelled) return;
         setError(e?.message ?? "שגיאה");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     }
     load();
+    const t = setInterval(load, REFRESH_MS);
     return () => {
       cancelled = true;
+      clearInterval(t);
     };
-  }, [queryString]);
+  }, [queryString, REFRESH_MS, sessions.length]);
 
   async function saveTreatment() {
     if (!treatSession) return;
@@ -133,9 +143,14 @@ export default function AdminSessionsPage() {
 
   function openTreatmentDialog(s: AdminSessionRow) {
     setTreatSession(s);
-    setTreatStatus("treated");
-    setTreatNote("");
+    setTreatStatus(tab === "untreated" || tab === "reviewing" ? "treated" : s.treatmentStatus);
+    setTreatNote(s.treatmentNote ?? "");
     setTreatOpen(true);
+  }
+
+  function treatmentButtonText() {
+    if (tab === "all" || tab === "treated") return "שינוי סטטוס";
+    return "סמן כטופל";
   }
 
   const totalSessions = sessions.length;
@@ -159,7 +174,10 @@ export default function AdminSessionsPage() {
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="text-sm font-medium text-zinc-900">פילטרים</div>
-            <div className="text-xs text-zinc-500">מוצגים: {totalSessions}</div>
+            <div className="flex items-center gap-2 text-xs text-zinc-500">
+              <div>מוצגים: {totalSessions}</div>
+              {refreshing ? <div className="text-zinc-400">מתעדכן...</div> : null}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
@@ -167,7 +185,7 @@ export default function AdminSessionsPage() {
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="חיפוש לפי מייל לקוח"
+                placeholder="חיפוש לפי מייל / טלפון / שם"
                 className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-[#b08d57]/50"
               />
             </div>
@@ -234,7 +252,7 @@ export default function AdminSessionsPage() {
           <div className="col-span-2 text-left">פעולות</div>
         </div>
 
-        {loading ? (
+        {loading && sessions.length === 0 ? (
           <div className="px-4 py-8 text-sm text-zinc-600">טוען...</div>
         ) : Array.isArray(sessions) && sessions.length === 0 ? (
           <div className="px-4 py-8 text-sm text-zinc-600">עדיין אין סשנים שהושלמו.</div>
@@ -252,7 +270,12 @@ export default function AdminSessionsPage() {
                   {fmtDateTime(s.completedAt ?? s.completed_at ?? s.createdAt ?? s.created_at)}
                 </div>
                 <div className="col-span-1">
-                  <span className={`inline-flex items-center rounded-lg border px-2 py-1 text-xs ${statusBadge(s.treatmentStatus)}`}>
+                  <span
+                    title={s.treatmentNote ?? ""}
+                    className={`inline-flex items-center rounded-lg border px-2 py-1 text-xs ${statusBadge(s.treatmentStatus)} ${
+                      s.treatmentNote ? "cursor-help" : ""
+                    }`}
+                  >
                     {statusText(s.treatmentStatus)}
                   </span>
                 </div>
@@ -268,7 +291,7 @@ export default function AdminSessionsPage() {
                     onClick={() => openTreatmentDialog(s)}
                     className="ml-2 rounded-xl bg-[#b08d57] px-3 py-1.5 text-xs font-medium text-white transition-all hover:brightness-95"
                   >
-                    סמן טיפול
+                    {treatmentButtonText()}
                   </button>
                 </div>
               </div>

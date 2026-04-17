@@ -25,18 +25,19 @@ export async function GET(req: Request) {
   }
 
   const treatmentStatus = parsed.data.tab && parsed.data.tab !== "all" ? parsed.data.tab : "all";
+  const q = parsed.data.q ?? null;
 
   const [sessions, counts] = await Promise.all([
     listAdminSessions({
       formId: parsed.data.formId ?? null,
-      emailQuery: parsed.data.q ?? null,
+      emailQuery: q,
       dateFrom: parsed.data.dateFrom ?? null,
       dateTo: parsed.data.dateTo ?? null,
       treatmentStatus,
     }),
     getAdminSessionsCounts({
       formId: parsed.data.formId ?? null,
-      emailQuery: parsed.data.q ?? null,
+      emailQuery: q,
       dateFrom: parsed.data.dateFrom ?? null,
       dateTo: parsed.data.dateTo ?? null,
     }),

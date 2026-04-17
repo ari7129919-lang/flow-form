@@ -138,7 +138,12 @@ export async function listAdminSessions(args: {
 
     if (emailQuery) {
       const q = emailQuery.toLowerCase();
-      sessions = sessions.filter((s: any) => String(s.email ?? "").toLowerCase().includes(q));
+      sessions = sessions.filter((s: any) => {
+        const email = String(s.email ?? "").toLowerCase();
+        const phone = String(s.phone ?? "").toLowerCase();
+        const name = String(s.name ?? "").toLowerCase();
+        return email.includes(q) || phone.includes(q) || name.includes(q);
+      });
     }
 
     if (dateFrom) {
@@ -191,7 +196,7 @@ export async function listAdminSessions(args: {
       .eq("status", "completed")
       .order("completed_at", { ascending: false });
     if (formId) q.eq("form_id", formId);
-    if (emailQuery) q.ilike("email", `%${emailQuery}%`);
+    if (emailQuery) q.or(`email.ilike.%${emailQuery}%,phone.ilike.%${emailQuery}%,name.ilike.%${emailQuery}%`);
     if (dateFrom) q.gte("completed_at", dateFrom + "T00:00:00.000Z");
     if (dateTo) q.lte("completed_at", dateTo + "T23:59:59.999Z");
     if (withTreatmentCols && treatmentStatus && treatmentStatus !== "all") q.eq("treatment_status", treatmentStatus);
@@ -759,12 +764,27 @@ export async function getSessionReport(sessionId: string) {
   }
 
   const supabase = getSupabaseServerClient();
-  const { data: session, error: sErr } = await supabase
+  const primary = await supabase
     .from("ff_sessions")
-    .select("id, form_id, name, email, phone, status, created_at, completed_at")
+    .select(
+      "id, form_id, name, email, phone, status, created_at, completed_at, treatment_status, treatment_note, treated_at",
+    )
     .eq("id", sessionId)
     .single();
-  if (sErr) throw sErr;
+
+  let session: any = null;
+  if (primary.error) {
+    if (!isMissingColumnError(primary.error)) throw primary.error;
+    const fallback = await supabase
+      .from("ff_sessions")
+      .select("id, form_id, name, email, phone, status, created_at, completed_at")
+      .eq("id", sessionId)
+      .single();
+    if (fallback.error) throw fallback.error;
+    session = fallback.data as any;
+  } else {
+    session = primary.data as any;
+  }
 
   const { data: qs, error: qErr } = await supabase
     .from("ff_questions")

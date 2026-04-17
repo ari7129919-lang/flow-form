@@ -1,6 +1,18 @@
 import Link from "next/link";
 import { getSessionReport } from "@/lib/data";
 
+function statusBadge(status: string) {
+  if (status === "treated") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (status === "reviewing") return "bg-amber-50 text-amber-800 border-amber-200";
+  return "bg-zinc-50 text-zinc-700 border-zinc-200";
+}
+
+function statusText(status: string) {
+  if (status === "treated") return "טופל";
+  if (status === "reviewing") return "בבדיקה";
+  return "לא טופל";
+}
+
 export default async function AdminSessionDetailsPage({
   params,
 }: {
@@ -24,6 +36,9 @@ export default async function AdminSessionDetailsPage({
   const questions: any[] = (report as any).questions ?? [];
   const answers: any[] = (report as any).answers ?? [];
 
+  const treatmentStatus = session.treatmentStatus ?? session.treatment_status ?? "untreated";
+  const treatmentNote = session.treatmentNote ?? session.treatment_note ?? null;
+
   const byQuestionId = new Map<string, any>();
   for (const a of answers) {
     const qid = a.questionId ?? a.question_id;
@@ -35,7 +50,17 @@ export default async function AdminSessionDetailsPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">פרטי סשן</h1>
-          <div className="mt-1 text-sm text-zinc-600">{sessionId}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-zinc-600">
+            <span>{sessionId}</span>
+            <span className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-xs ${statusBadge(String(treatmentStatus))}`}>
+              {statusText(String(treatmentStatus))}
+            </span>
+            {treatmentNote ? (
+              <span title={String(treatmentNote)} className="max-w-[28rem] truncate text-xs text-zinc-500">
+                {String(treatmentNote)}
+              </span>
+            ) : null}
+          </div>
         </div>
         <Link
           href="/admin/sessions"
